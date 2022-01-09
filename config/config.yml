@@ -1,0 +1,214 @@
+---
+##################
+# default config #
+##################
+#
+# Note: other profiles inherit from here on a per-section bassis (meaning,
+# an entire section is replaced, if specified; deeper-level overrides not
+# currently supported)
+
+default:
+  pfr:
+    teams_url:   https://www.pro-football-reference.com/teams/<TEAM_CODE>/
+    games_url:   https://www.pro-football-reference.com/years/<YEAR>/games.htm
+  teams:
+    # AFC East
+    BUF:
+      name:      Bills
+      full_name: Buffalo Bills
+      conf:      AFC
+      div:       AFC East
+      pfr_code:  buf
+    MIA:
+      name:      Dolphins
+      full_name: Miami Dolphins
+      conf:      AFC
+      div:       AFC East
+      pfr_code:  mia
+    NE:
+      name:      Patriots
+      full_name: New England Patriots
+      conf:      AFC
+      div:       AFC East
+      pfr_code:  nwe
+    NYJ:
+      name:      Jets
+      full_name: New York Jets
+      conf:      AFC
+      div:       AFC East
+      pfr_code:  nyj
+    # AFC North
+    BAL:
+      name:      Ravens
+      full_name: Baltimore Ravens
+      conf:      AFC
+      div:       AFC North
+      pfr_code:  rav
+    CIN:
+      name:      Bengals
+      full_name: Cincinnati Bengals
+      conf:      AFC
+      div:       AFC North
+      pfr_code:  cin
+    CLE:
+      name:      Browns
+      full_name: Cleveland Browns
+      conf:      AFC
+      div:       AFC North
+      pfr_code:  cle
+    PIT:
+      name:      Steelers
+      full_name: Pittsburgh Steelers
+      conf:      AFC
+      div:       AFC North
+      pfr_code:  pit
+    # AFC South
+    HOU:
+      name:      Texans
+      full_name: Houston Texans
+      conf:      AFC
+      div:       AFC South
+      pfr_code:  htx
+    IND:
+      name:      Colts
+      full_name: Indianapolis Colts
+      conf:      AFC
+      div:       AFC South
+      pfr_code:  clt
+    JAX:
+      name:      Jaguars
+      full_name: Jacksonville Jaguars
+      conf:      AFC
+      div:       AFC South
+      pfr_code:  jax
+    TEN:
+      name:      Titans
+      full_name: Tennessee Titans
+      conf:      AFC
+      div:       AFC South
+      pfr_code:  oti
+    # AFC West
+    DEN:
+      name:      Broncos
+      full_name: Denver Broncos
+      conf:      AFC
+      div:       AFC West
+      pfr_code:  den
+    KC:
+      name:      Chiefs
+      full_name: Kansas City Chiefs
+      conf:      AFC
+      div:       AFC West
+      pfr_code:  kan
+    LAC:
+      name:      Chargers
+      full_name: Los Angeles Chargers
+      conf:      AFC
+      div:       AFC West
+      pfr_code:  sdg
+    LV:
+      name:      Raiders
+      full_name: Las Vegas Raiders
+      conf:      AFC
+      div:       AFC West
+      pfr_code:  rai
+    # NFC East
+    DAL:
+      name:      Cowboys
+      full_name: Dallas Cowboys
+      conf:      NFC
+      div:       NFC East
+      pfr_code:  dal
+    NYG:
+      name:      Giants
+      full_name: New York Giants
+      conf:      NFC
+      div:       NFC East
+      pfr_code:  nyg
+    PHI:
+      name:      Eagles
+      full_name: Philadelphia Eagles
+      conf:      NFC
+      div:       NFC East
+      pfr_code:  phi
+    WAS:
+      name:      Washington Football Team
+      full_name: Washington Football Team
+      conf:      NFC
+      div:       NFC East
+      pfr_code:  was
+    # NFC North
+    CHI:
+      name:      Bears
+      full_name: Chicago Bears
+      conf:      NFC
+      div:       NFC North
+      pfr_code:  chi
+    DET:
+      name:      Lions
+      full_name: Detroit Lions
+      conf:      NFC
+      div:       NFC North
+      pfr_code:  det
+    GB:
+      name:      Packers
+      full_name: Green Bay Packers
+      conf:      NFC
+      div:       NFC North
+      pfr_code:  gnb
+    MIN:
+      name:      Vikings
+      full_name: Minnesota Vikings
+      conf:      NFC
+      div:       NFC North
+      pfr_code:  min
+    # NFC South
+    ATL:
+      name:      Falcons
+      full_name: Atlanta Falcons
+      conf:      NFC
+      div:       NFC South
+      pfr_code:  atl
+    CAR:
+      name:      Panthers
+      full_name: Carolina Panthers
+      conf:      NFC
+      div:       NFC South
+      pfr_code:  car
+    NO:
+      name:      Saints
+      full_name: New Orleans Saints
+      conf:      NFC
+      div:       NFC South
+      pfr_code:  nor
+    TB:
+      name:      Buccaneers
+      full_name: Tampa Bay Buccaneers
+      conf:      NFC
+      div:       NFC South
+      pfr_code:  tam
+    # NFC West
+    ARZ:
+      name:      Cardinals
+      full_name: Arizona Cardinals
+      conf:      NFC
+      div:       NFC West
+      pfr_code:  crd
+    LAR:
+      name:      Rams
+      full_name: Los Angeles Rams
+      conf:      NFC
+      div:       NFC West
+      pfr_code:  ram
+    SEA:
+      name:      Seahawks
+      full_name: Seattle Seahawks
+      conf:      NFC
+      div:       NFC West
+      pfr_code:  sea
+    SF:
+      name:      49ers
+      full_name: San Francisco 49ers
+      conf:      NFC
+      div:       NFC West
+      pfr_code:  sfo
