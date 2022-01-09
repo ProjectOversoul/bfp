@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from typing import ClassVar
-
 from ..team import Team
 from ..game import GameInfo
+from .base import Swami
 
-class Swami:
-    """Abstract base class for football swami; each subclass is an implementation
-    of football prediction algorithms
+class SwamiLasVegas(Swami):
+    """History of predictions based on Las Vegas odds
     """
-    name: ClassVar[str]
-    desc: ClassVar[str]
-    
+    name = "Las Vegas"
+    desc = "History of predictions based on Las Vegas odds"
+
     def __init__(self):
         pass
 

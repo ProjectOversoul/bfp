@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from typing import ClassVar
-
 from ..team import Team
 from ..game import GameInfo
+from .base import Swami
 
-class Swami:
-    """Abstract base class for football swami; each subclass is an implementation
-    of football prediction algorithms
+class SwamiRudi3(Swami):
+    """Rudimentary prediction based on last three games played
     """
-    name: ClassVar[str]
-    desc: ClassVar[str]
-    
+    name = "Rudi 3"
+    desc = "Based on last three games played"
+
     def __init__(self):
         pass
 
     def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:
-        """Implement algoritm to pick winner of games
+        """Implement algorithm to pick winner of games
 
         :param game_info: context/schedule info for the game
         :return: predicted winning team and margin of victory
