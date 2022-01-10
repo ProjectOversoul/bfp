@@ -2,10 +2,6 @@
 
 from .game import Game
 
-#########
-# Enums #
-#########
-
 ###########
 # Filters #
 ###########
@@ -76,7 +72,7 @@ class AnlFilterSpread(AnlFilter):
 # Stats #
 #########
 
-class AnlStats:
+class AnlStats(NamedTuple):
     games:       list[Game]
     wins:        list[Game]
     losses:      list[Game]
@@ -87,6 +83,10 @@ class AnlStats:
     yds_against: int
     tos_for:     int
     tos_against: int
+
+    @classmethod
+    def size(cls) -> int:
+        return len(cls._fields)
 
     @property
     def win_pct(self) -> float:
@@ -113,11 +113,26 @@ class AnlStats:
 class Analysis:
     """Analysis object with stats for specified team and evaluation filters
     """
+    team:    Team
+    filters: list[AnlFilter]
+    frozen:  bool = False
+    _stats:  AnlStats
+
     def __init__(self, team: Team, filters: Iterable[AnlFilter] = None):
-        pass
+        self.team    = team
+        self.filters = filters or []
 
-    def add_filter(self, AnlFilter) -> None:
-        pass
+    def add_filter(self, filter: AnlFilter) -> None:
+        if self.frozen:
+            raise LogicError("Cannot add filters after analysis is frozen")
+        self.filters.add(filter)
 
-    def get_stats(self) -> AnlStats:
-        pass
+    @property
+    def stats(self) -> AnlStats:
+        if not self._stats:
+            self.compute_stats()
+        return self._stats
+
+    def compute_stats(self) -> None:
+        self._stats = AnlStats._make([None] * AnlStats.size())
+        self.frozen = True

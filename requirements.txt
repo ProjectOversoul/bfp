@@ -1,2 +1,5 @@
+regex
 pyyaml
 peewee
+requests
+beautifulsoup4

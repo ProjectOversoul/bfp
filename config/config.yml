@@ -8,9 +8,30 @@
 # currently supported)
 
 default:
-  pfr:
-    teams_url:   https://www.pro-football-reference.com/teams/<TEAM_CODE>/
-    games_url:   https://www.pro-football-reference.com/years/<YEAR>/games.htm
+  data_sources:
+    pfr:
+      teams_url:        https://www.pro-football-reference.com/teams/<TEAM_CODE>/
+      teams_file:       www.pro-football-reference.com_teams_<TEAM_CODE>.html
+      games_url:        https://www.pro-football-reference.com/years/<YEAR>/games.htm
+      games_file:       www.pro-football-reference.com_years_<YEAR>_games.html
+      games_stats:
+        week_num:         str
+        game_day_of_week: str
+        game_date:        date
+        gametime:         time
+        winner:           team
+        game_location:    str
+        loser:            team
+        boxscore_word:    str
+        pts_win:          int
+        pts_lose:         int
+        yards_win:        int
+        to_win:           int
+        yards_lose:       int
+        to_lose:          int
+  databases:
+    sqlite:
+      db_file:   bfp.sqlite
   teams:
     # AFC East
     BUF:

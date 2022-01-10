@@ -2,9 +2,9 @@
 
 from ..team import Team
 from ..game import GameInfo
-from .base import Swami
+from .ext import SwamiExt
 
-class SwamiFiveThirtyEight(Swami):
+class SwamiFiveThirtyEight(SwamiExt):
     """History of predictions from the fivethirtyeight.com website
     """
     name = "FiveThirtyEight"

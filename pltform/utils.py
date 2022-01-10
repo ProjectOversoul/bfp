@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 from typing import Union, Optional
+from numbers import Number
 import os.path
 
 import yaml
@@ -93,3 +94,41 @@ class Config:
             profile_params = profile_data.get(section, {})
             ret_params.update(profile_params)
         return ret_params
+
+########
+# Misc #
+########
+
+def parse_argv(argv: list[str]) -> tuple[list, dict]:
+    """Takes a list of arguments (typically a slice of sys.argv), which may be a
+    combination of bare agruments or kwargs-style constructions (e.g. "key=value")
+    and returns a tuple of `args` and `kwargs`.  For both `args` and `kwargs`, we
+    attempt to cast the value to the proper type (e.g. int, float, bool, or None).
+    """
+    def typecast(val: str) -> Union[str, Number, bool, None]:
+        if val.isdecimal():
+            return int(val)
+        if val.isnumeric():
+            return float(val)
+        if val.lower() in ['false', 'f', 'no', 'n']:
+            return False
+        if val.lower() in ['true', 't', 'yes', 'y']:
+            return True
+        if val.lower() in ['null', 'none', 'nil']:
+            return None
+        return val if len(val) > 0 else None
+
+    args = []
+    kwargs = {}
+    args_done = False
+    for arg in argv:
+        if not args_done:
+            if '=' not in arg:
+                args.append(typecast(arg))
+                continue
+            else:
+                args_done = True
+        kw, val = arg.split('=', 1)
+        kwargs[kw] = typecast(val)
+
+    return args, kwargs

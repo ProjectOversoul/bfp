@@ -1,7 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+
+from peewee import *
+
+from .core import cfg, ConfigError
 from .base_model import BaseModel
+
+#################
+# Team metadata #
+#################
+
+TEAMS_KEY = 'teams'
+
+TEAMS = cfg.config(TEAMS_KEY)
+if not TEAMS:
+    raise ConfigError(f"'{TEAMS_KEY}' not found in config file")
 
 ########
 # Team #
@@ -20,10 +35,6 @@ class Team(BaseModel):
     div       = TextField()
     pfr_code  = TextField()
     timezone  = TextField(null=True)
-
-    @classmethod
-    def load_base_data(cls) -> None:
-        pass
 
 ########
 # Main #

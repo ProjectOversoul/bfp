@@ -19,4 +19,22 @@ class SwamiRudi1(Swami):
         :param game_info: context/schedule info for the game
         :return: predicted winning team and margin of victory
         """
-        pass
+        filters = []
+        filters.add(AnlFilterGames(1))
+        home_anl = Analysis(game_info.home_team, filters)
+        away_anl = Analysis(game_info.away_team, filters)
+
+        if home_anl.stats.wins > away_anl.stats.wins:
+            winner = game_info.home_team
+            margin = home_anl.pts_margin
+        elif home_anl.stats.wins < away_anl.stats.wins:
+            winner = game_info.away_team
+            margin = away_anl.pts_margin
+        elif home_anl.stats.pts_margin > away_anl.stats.pts_margin:
+            winner = game_info.home_team
+            margin = home_anl.pts_margin
+        else:
+            winner = game_info.away_team
+            margin = away_anl.pts_margin
+
+        return winner, max(margin, 1)

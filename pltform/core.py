@@ -81,8 +81,9 @@ if DEBUG:
 ##############
 
 class DataError(RuntimeError):
-    """Thrown if there is a problem with any of the data at runtime, whether
-    due to bad external data or errrant internal processing
+    """Thrown if there is a problem detected with any of the data at runtime,
+    whether due to bad and/or insufficient external data or errrant internal
+    data processing
     """
     pass
 

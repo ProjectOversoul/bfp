@@ -11,12 +11,16 @@ setup(
     author='crash',
     author_email='',
     description='',
-    install_requires=['pyyaml',
-                      'peewee'],
+    install_requires=['regex',
+                      'pyyaml',
+                      'peewee',
+                      'requests',
+                      'beautifulsoup4'],
     entry_points={
         'console_scripts': [
             'game = pltform.game:main',
-            'team = pltform.team:main'
+            'team = pltform.team:main',
+            'pfr  = pltform.pfr:main'
         ],
     }
 )
