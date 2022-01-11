@@ -18,9 +18,10 @@ setup(
                       'beautifulsoup4'],
     entry_points={
         'console_scripts': [
-            'game = pltform.game:main',
-            'team = pltform.team:main',
-            'pfr  = pltform.pfr:main'
+            'game     = pltform.game:main',
+            'team     = pltform.team:main',
+            'pfr      = pltform.pfr:main',
+            'db_admin = pltform.db_admin:main'
         ],
     }
 )

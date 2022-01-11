@@ -10,6 +10,9 @@
 default:
   data_sources:
     pfr:
+      html_parser:      lxml
+      http_headers:     {'User-Agent': 'Mozilla/5.0'}
+      fetch_interval:   1.0
       teams_url:        https://www.pro-football-reference.com/teams/<TEAM_CODE>/
       teams_file:       www.pro-football-reference.com_teams_<TEAM_CODE>.html
       games_url:        https://www.pro-football-reference.com/years/<YEAR>/games.htm
@@ -31,7 +34,7 @@ default:
         to_lose:          int
   databases:
     sqlite:
-      db_file:   bfp.sqlite
+      db_file:   bfp.db
   teams:
     # AFC East
     BUF:
@@ -196,7 +199,7 @@ default:
       conf:      NFC
       div:       NFC South
       pfr_code:  car
-    NO:
+    'NO':
       name:      Saints
       full_name: New Orleans Saints
       conf:      NFC

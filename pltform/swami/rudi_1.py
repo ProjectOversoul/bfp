@@ -20,21 +20,22 @@ class SwamiRudi1(Swami):
         :return: predicted winning team and margin of victory
         """
         filters = []
-        filters.add(AnlFilterGames(1))
-        home_anl = Analysis(game_info.home_team, filters)
-        away_anl = Analysis(game_info.away_team, filters)
+        filters.add(AnlyFilterGames(1))
+        home_anly = Analysis(game_info.home_team, filters)
+        away_anly = Analysis(game_info.away_team, filters)
 
-        if home_anl.stats.wins > away_anl.stats.wins:
+        if home_anly.stats.wins > away_anly.stats.wins:
             winner = game_info.home_team
-            margin = home_anl.pts_margin
-        elif home_anl.stats.wins < away_anl.stats.wins:
+            margin = home_anly.pts_margin
+        elif home_anly.stats.wins < away_anly.stats.wins:
             winner = game_info.away_team
-            margin = away_anl.pts_margin
-        elif home_anl.stats.pts_margin > away_anl.stats.pts_margin:
+            margin = away_anly.pts_margin
+        elif home_anly.stats.pts_margin >= away_anly.stats.pts_margin:
+            # favor home team in case of tie on margin
             winner = game_info.home_team
-            margin = home_anl.pts_margin
+            margin = home_anly.pts_margin
         else:
             winner = game_info.away_team
-            margin = away_anl.pts_margin
+            margin = away_anly.pts_margin
 
         return winner, max(margin, 1)

@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from typing import Optional, NamedTuple
 
 from peewee import *
 
+from .utils import parse_argv
+from .db_core import db, BaseModel
 from .core import cfg, ConfigError
-from .base_model import BaseModel
 
 #################
 # Team metadata #
@@ -22,6 +24,19 @@ if not TEAMS:
 # Team #
 ########
 
+class TeamData(NamedTuple):
+    """For use in data loading (as well as nicer documentation?)--don't really
+    like doing it this way, but the ORM style doesn't allow the model class to
+    be more flexible.
+    """
+    code:      str
+    name:      str
+    full_name: str
+    conf:      str
+    div:       str
+    pfr_code:  str
+    timezone:  Optional[str]
+
 class Team(BaseModel):
     """Represents a currently active team; note that data for prior incarnations
     of teams (e.g. Decatur Staleys or Oakland Raiders) are incorporated into the
@@ -36,12 +51,55 @@ class Team(BaseModel):
     pfr_code  = TextField()
     timezone  = TextField(null=True)
 
+#############
+# load_data #
+#############
+
+def load_data() -> int:
+    """Load teams data into the database.  The base data is specified in the config
+    file for the project.
+    """
+    teams_data = []
+    for code, info in TEAMS.items():
+        team_data = {'code'      : code,
+                     'name'      : info['name'],
+                     'full_name' : info['full_name'],
+                     'conf'      : info['conf'],
+                     'div'       : info['div'],
+                     'pfr_code'  : info['pfr_code'],
+                     'timezone'  : info.get('timezone')}
+        teams_data.append(team_data)
+
+    if db.is_closed():
+        db.connect()
+    with db.atomic():
+        Team.insert_many(teams_data).execute()
+
+    return 0
+
 ########
 # Main #
 ########
 
 def main() -> int:
-    pass
+    """Built-in driver to invoke various utility functions for the module
+
+    Usage: team.py <util_func> [<args> ...]
+
+    Functions/usage:
+      - load_data
+    """
+    if len(sys.argv) < 2:
+        print(f"Utility function not specified", file=sys.stderr)
+        return -1
+    elif sys.argv[1] not in globals():
+        print(f"Unknown utility function '{sys.argv[1]}'", file=sys.stderr)
+        return -1
+
+    util_func = globals()[sys.argv[1]]
+    args, kwargs = parse_argv(sys.argv[2:])
+
+    return util_func(*args, **kwargs)
 
 if __name__ == '__main__':
     sys.exit(main())

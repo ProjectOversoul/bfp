@@ -5,7 +5,6 @@ import sys
 from collections.abc import Iterable
 from datetime import datetime, date, time
 from time import sleep
-import re
 
 import regex as re
 import requests
@@ -14,11 +13,13 @@ from peewee import *
 
 from .utils import parse_argv
 from .core import cfg, DataFile, log, ConfigError, DataError
+from .db_core import db
 from .team import TEAMS
-from .game import Game
+from .game import SPC_WEEK_MAP, WEEKDAY_MAP, Game
 
 DATA_SRC_KEY = 'data_sources'
 PFR_SECT_KEY = 'pfr'
+
 data_src = cfg.config(DATA_SRC_KEY)
 if not data_src or PFR_SECT_KEY not in data_src:
     raise ConfigError("'{DATA_SRC_KEY}' or '{PFR_SECT_KEY}' not found in config file")
@@ -40,12 +41,14 @@ for code, info in TEAMS.items():
 # Game Data #
 #############
 
-GAMES_URL_KEY   = 'games_url'
-GAMES_FILE_KEY  = 'games_file'
-GAMES_STATS_KEY = 'games_stats'
-HTML_PARSER     = 'lxml'
-HTTP_HEADERS    = {'User-Agent': 'Mozilla/5.0'}
-SLEEP_TIME      = 1.0
+# must be specified in config file
+PFR_GAMES_URL   = PFR['games_url']
+PFR_GAMES_FILE  = PFR['games_file']
+PFR_GAMES_STATS = PFR['games_stats']
+# optional in config file (has usable defaults here)
+HTML_PARSER     = PFR.get('html_parser')    or 'lxml'
+HTTP_HEADERS    = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
+FETCH_INTERVAL  = PFR.get('fetch_interval') or 1.0
 
 DATE_FMT        = '%Y-%m-%d'
 TIME_FMT        = '%I:%M%p'
@@ -64,7 +67,11 @@ def time_proc(value: str) -> time:
     return datetime.strptime(value, TIME_FMT).time()
 
 def team_proc(value: str) -> str:
-    # input string (href) has format: "/teams/atl/2021.htm"
+    """Convert team URL to `Team` primary key
+
+    :param value: PFR team URL (e.g. "/teams/atl/2021.htm")
+    :return: `Team` code (primary key)
+    """
     elems = value.split('/')
     if len(elems) != 4 or elems[:2] != TEAM_HREF_PFX:
         raise DataError(f"Unexpected format for href '{value}'")
@@ -77,6 +84,15 @@ TYPE_PROC = {'str':  str_proc,
              'team': team_proc}
 
 def replace_tokens(fmt: str, **kwargs) -> str:
+    """Replace tokens in format string with values passed in as keyword args.
+
+    Tokens in format string are represented by "<TOKEN_STR>" (all uppercase), and
+    are replaced in output string with corresponding lowercase entries in `kwargs`.
+
+    :param fmt: format string with one or more tokens
+    :param kwargs: possible token replacement values
+    :return: string with token replacements
+    """
     new_str = fmt
     tokens = re.findall(r'(\<[\p{Lu}\d_]+\>)', fmt)
     for token in tokens:
@@ -87,12 +103,14 @@ def replace_tokens(fmt: str, **kwargs) -> str:
         new_str = new_str.replace(token, value)
     return new_str
 
-def get_game_data(years: Iterable[int]) -> None:
-    url_fmt = PFR[GAMES_URL_KEY]
-    file_fmt = PFR[GAMES_FILE_KEY]
+def get_game_data(years: Iterable[int]) -> int:
+    url_fmt  = PFR_GAMES_URL
+    file_fmt = PFR_GAMES_FILE
 
     sess = requests.Session()
-    for year in years:
+    for i, year in enumerate(years):
+        if i > 0:
+            sleep(FETCH_INTERVAL)  # be nice to website
         url  = replace_tokens(url_fmt, year=str(year))
         req  = sess.get(url, headers=HTTP_HEADERS)
         html = req.text
@@ -102,9 +120,10 @@ def get_game_data(years: Iterable[int]) -> None:
         with open(file_path, 'w') as f:
             nbytes = f.write(html)
         log.debug(f"Wrote {nbytes} bytes to '{file_path}'")
-        sleep(SLEEP_TIME)
 
-def as_game_dict(data: dict) -> dict:
+    return 0
+
+def game_data_iter(year: int, data: list[dict]) -> dict:
     """
     season       : int
     week         : int  # ordinal within season, or special `Week` value
@@ -124,20 +143,84 @@ def as_game_dict(data: dict) -> dict:
     away_yds     : int
     away_tos     : int
     """
-    pass
+    def week_conv(value: str) -> int:
+        if value.isnumeric():
+            return int(value)
+        if week_val := SPC_WEEK_MAP.get(value):
+            return week_val.value
+        raise DataError(f"Unknown week value '{value}'")
 
-def store_game_data(years: Iterable[int]) -> None:
-    file_fmt = PFR[GAMES_FILE_KEY]
+    def weekday_conv(value: str) -> int:
+        if weekday_val := WEEKDAY_MAP.get(value):
+            return weekday_val.value
+        raise DataError(f"Unknown weekday value '{value}'")
 
+    for i, rec in enumerate(data):
+        if not rec['game_location'] or rec['game_location'] == 'N':
+            home_team = rec['winner']
+            away_team = rec['loser']
+            is_tie    = rec['pts_win'] == rec['pts_lose']
+            home_pts  = rec['pts_win']
+            home_yds  = rec['yards_win']
+            home_tos  = rec['to_win']
+            away_pts  = rec['pts_lose']
+            away_yds  = rec['yards_lose']
+            away_tos  = rec['to_lose']
+        else:
+            if rec['game_location'] != '@':
+                raise RuntimeError(f"Unexpected value for `game_location`: "
+                                   f"'{rec['game_location']}' (rec {i})")
+            away_team = rec['winner']
+            home_team = rec['loser']
+            is_tie    = False
+            away_pts  = rec['pts_win']
+            away_yds  = rec['yards_win']
+            away_tos  = rec['to_win']
+            home_pts  = rec['pts_lose']
+            home_yds  = rec['yards_lose']
+            home_tos  = rec['to_lose']
+
+        game_data = {'season'       : year,
+                     'week'         : week_conv(rec['week_num']),
+                     'day'          : weekday_conv(rec['game_day_of_week']),
+                     'datetime'     : datetime.combine(rec['game_date'], rec['gametime']),
+                     'home_team'    : home_team,
+                     'away_team'    : away_team,
+                     'boxscore_url' : rec['boxscore_word'],
+                     'winner'       : rec['winner'],  # home team, if tie
+                     'loser'        : rec['loser'],   # away team, if tie
+                     'tie'          : is_tie,
+                     'home_pts'     : home_pts,
+                     'home_yds'     : home_yds,
+                     'home_tos'     : home_tos,
+                     'away_pts'     : away_pts,
+                     'away_yds'     : away_yds,
+                     'away_tos'     : away_tos}
+        yield game_data
+
+def load_game_data(years: Iterable[int]) -> int:
+    file_fmt = PFR_GAMES_FILE
+
+    if db.is_closed():
+        db.connect()
+
+    # note that we do a separate atomic batch insert for each year
     for year in years:
         file_path = DataFile(replace_tokens(file_fmt, year=str(year)))
         with open(file_path, 'r') as f:
             html = f.read()
         log.debug(f"Read {len(html)} bytes from '{file_path}'")
         parsed = parse_game_data(html)
+        games_data = []
+        for game_data in game_data_iter(year, parsed):
+            games_data.append(game_data)
+        with db.atomic():
+            Game.insert_many(games_data).execute()
+
+    return 0
 
 def parse_game_data(html: str) -> list[dict]:
-    games_meta = PFR[GAMES_STATS_KEY]
+    games_meta = PFR_GAMES_STATS
 
     parsed = []
     soup  = BeautifulSoup(html, HTML_PARSER)
@@ -155,8 +238,8 @@ def parse_game_data(html: str) -> list[dict]:
 
     body = table.find('tbody')
     for i, row in enumerate(body.find_all('tr')):
+        # skip periodic repeat of table header
         if (tr_class := row.get('class')) and 'thead' in tr_class:
-            # skip periodic repeat of table header
             continue
 
         row_data = {}
@@ -167,12 +250,12 @@ def parse_game_data(html: str) -> list[dict]:
                 value = anchor['href']
             else:
                 value = col.string
-            if value is None:
-                # this is a special formatting row, skip it
+            # if this is a special formatting row, bail (and skip row below)
+            if j == 0 and value is None:
                 break
-            row_data[col_key] = field_proc[col_key](value)
+            row_data[col_key] = None if value is None else field_proc[col_key](value)
+        # broke from inner loop (no data in row), skip it
         if j == 0:
-            # broke from inner loop (no data in row)
             continue
         parsed.append(row_data)
 
@@ -185,11 +268,11 @@ def parse_game_data(html: str) -> list[dict]:
 def main() -> int:
     """Built-in driver to invoke various utility functions for the module
 
-    Usage: pfr.py <func_name> [<args> ...]
+    Usage: pfr.py <util_func> [<args> ...]
 
     Functions/usage:
       - get_game_data years=<years>
-      - store_game_data years=<years>
+      - load_game_data years=<years>
 
     where <years> can be:
       - single year    (e.g. '2021')

@@ -6,62 +6,62 @@ from .game import Game
 # Filters #
 ###########
 
-class AnlFilter:
+class AnlyFilter:
     """Base class for analysis filters
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterVenue(AnlFilter):
+class AnlyFilterVenue(AnlyFilter):
     """Filter specifying home vs. away games to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterTeam(AnlFilter):
+class AnlyFilterTeam(AnlyFilter):
     """Filter specifying opposing team to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterConf(AnlFilter):
+class AnlyFilterConf(AnlyFilter):
     """Filter specifying opponent team conference to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterDiv(AnlFilter):
+class AnlyFilterDiv(AnlyFilter):
     """Filter specifying opponent team division to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterGames(AnlFilter):
+class AnlyFilterGames(AnlyFilter):
     """Filter specifying number of qualitfying games to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterSeasons(AnlFilter):
+class AnlyFilterSeasons(AnlyFilter):
     """Filter specifying number of seasons to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterWeeks(AnlFilter):
+class AnlyFilterWeeks(AnlyFilter):
     """Filter specifying which weeks within the season to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterRecord(AnlFilter):
+class AnlyFilterRecord(AnlyFilter):
     """Filter specifying the current/opponent team point-in-time season
     records for games to evaluate
     """
     def __init__(self, **kwargs):
         pass
 
-class AnlFilterSpread(AnlFilter):
+class AnlyFilterSpread(AnlyFilter):
     """Filter specifying the spread (relative to current team) for games
     to evaluate
     """
@@ -72,7 +72,7 @@ class AnlFilterSpread(AnlFilter):
 # Stats #
 #########
 
-class AnlStats(NamedTuple):
+class AnlyStats(NamedTuple):
     games:       list[Game]
     wins:        list[Game]
     losses:      list[Game]
@@ -114,25 +114,25 @@ class Analysis:
     """Analysis object with stats for specified team and evaluation filters
     """
     team:    Team
-    filters: list[AnlFilter]
+    filters: list[AnlyFilter]
     frozen:  bool = False
-    _stats:  AnlStats
+    _stats:  AnlyStats
 
-    def __init__(self, team: Team, filters: Iterable[AnlFilter] = None):
+    def __init__(self, team: Team, filters: Iterable[AnlyFilter] = None):
         self.team    = team
         self.filters = filters or []
 
-    def add_filter(self, filter: AnlFilter) -> None:
+    def add_filter(self, filter: AnlyFilter) -> None:
         if self.frozen:
             raise LogicError("Cannot add filters after analysis is frozen")
         self.filters.add(filter)
 
     @property
-    def stats(self) -> AnlStats:
+    def stats(self) -> AnlyStats:
         if not self._stats:
             self.compute_stats()
         return self._stats
 
     def compute_stats(self) -> None:
-        self._stats = AnlStats._make([None] * AnlStats.size())
+        self._stats = AnlyStats._make([None] * AnlyStats.size())
         self.frozen = True

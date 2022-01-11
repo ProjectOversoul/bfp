@@ -9,7 +9,7 @@ from enum import Enum
 from peewee import *
 
 from .core import DataError
-from .base_model import BaseModel
+from .db_core import BaseModel
 from .team import Team
 
 ########
@@ -28,6 +28,12 @@ class Week(Enum):
     CONF = 300
     SB   = 400
 
+SPC_WEEK_MAP = {'WildCard':  Week.WC,
+                'Division':  Week.DIV,
+                'ConfChamp': Week.CONF,
+                'SuperBowl': Week.SB}
+
+# values consistent with `datetime.weekday()`
 class WeekDay(Enum):
     MON = 0
     TUE = 1
@@ -36,6 +42,14 @@ class WeekDay(Enum):
     FRI = 4
     SAT = 5
     SUN = 6
+
+WEEKDAY_MAP = {'Mon': WeekDay.MON,
+               'Tue': WeekDay.TUE,
+               'Wed': WeekDay.WED,
+               'Thu': WeekDay.THU,
+               'Fri': WeekDay.FRI,
+               'Sat': WeekDay.SAT,
+               'Sun': WeekDay.SUN}
 
 ############
 # GameInfo #
@@ -68,8 +82,8 @@ class Game(BaseModel):
     week         = IntegerField()  # ordinal within season, or special `Week` value
     day          = IntegerField()  # day of week 0-6 (Mon-Sun)
     datetime     = DateTimeField()
-    home_team    = ForeignKeyField(Team, backref='home_games')
-    away_team    = ForeignKeyField(Team, backref='away_games')
+    home_team    = ForeignKeyField(Team, column_name='home_team', backref='home_games')
+    away_team    = ForeignKeyField(Team, column_name='away_team', backref='away_games')
     boxscore_url = TextField()
 
     # enrichment info
@@ -77,8 +91,10 @@ class Game(BaseModel):
     over_under   = IntegerField(null=True)
 
     # result/outcome info
-    winner       = ForeignKeyField(Team, backref='win_games', null=True)   # home team, if tie
-    loser        = ForeignKeyField(Team, backref='lose_games', null=True)  # away team, if tie
+    winner       = ForeignKeyField(Team, column_name='winner',
+                                   backref='games_won', null=True)   # home team, if tie
+    loser        = ForeignKeyField(Team, column_name='loser',
+                                   backref='games_lost', null=True)  # away team, if tie
     tie          = BooleanField(null=True)
     home_pts     = IntegerField(null=True)
     home_yds     = IntegerField(null=True)
@@ -125,7 +141,9 @@ class Game(BaseModel):
         raise DataError(f"Bad value for `pt_spread`: {self.pt_spread}")
 
     def get_info(self) -> GameInfo:
-        """Return just the context/schedule fields as a NamedTuple
+        """Return just the context/schedule fields as a NamedTuple (e.g. so swamis won't
+        be tempted to use completed game data in computing picks--as if Python actually
+        had security preventing such shananigans, lol)
         """
         return GameInfo._make((self.game_id,
                                self.season,
