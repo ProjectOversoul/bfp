@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from typing import ClassVar, NamedTuple
-from datetime import datetime
 from enum import Enum
 
 from peewee import ModelSelect, query_to_string
@@ -44,34 +43,74 @@ class AnlyFilter:
     def __init__(self, *args, **kwargs):
         """Note that subclasses should not call the super class constructor.
         """
-        raise ImplementationError("Should not be called by subclass __init__")
+        raise ImplementationError("Should not be called by subclass `__init__`")
 
-    def apply(self, query: ModelSelect) -> ModelSelect:
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
         raise ImplementationError("Must be implemented by subclass")
 
 class AnlyFilterVenue(AnlyFilter):
     """Filter specifying home vs. away games to evaluate
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         pass
 
 class AnlyFilterTeam(AnlyFilter):
     """Filter specifying opposing team to evaluate
     """
-    def __init__(self, *args, **kwargs):
-        pass
+    type = FilterType.WHERE
 
-class AnlyFilterConf(AnlyFilter):
-    """Filter specifying opponent team conference to evaluate
-    """
-    def __init__(self, *args, **kwargs):
-        pass
+    opp_team: Team
+
+    def __init__(self, opp_team: Team):
+        self.opp_team = opp_team
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        return query.where(((Game.home_team == str(my_team)) &
+                            (Game.away_team == str(self.opp_team))) |
+                           ((Game.home_team == str(self.opp_team)) &
+                            (Game.away_team == str(my_team))))
 
 class AnlyFilterDiv(AnlyFilter):
     """Filter specifying opponent team division to evaluate
     """
-    def __init__(self, *args, **kwargs):
-        pass
+    type = FilterType.WHERE
+
+    div: str
+
+    def __init__(self, div: str):
+        self.div = div
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        HomeTeam = Team.alias()
+        AwayTeam = Team.alias()
+        return (query
+                .join(HomeTeam, on=(HomeTeam.code == Game.home_team))
+                .join(AwayTeam, on=(AwayTeam.code == Game.away_team))
+                .where(((Game.home_team == str(my_team)) &
+                        (AwayTeam.div == self.div)) |
+                       ((Game.away_team == str(my_team)) &
+                        (HomeTeam.div == self.div))))
+
+class AnlyFilterConf(AnlyFilter):
+    """Filter specifying opponent team conference to evaluate
+    """
+    type = FilterType.WHERE
+
+    conf: str
+
+    def __init__(self, conf: str):
+        self.conf = conf
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        HomeTeam = Team.alias()
+        AwayTeam = Team.alias()
+        return (query
+                .join(HomeTeam, on=(HomeTeam.code == Game.home_team))
+                .join(AwayTeam, on=(AwayTeam.code == Game.away_team))
+                .where(((Game.home_team == str(my_team)) &
+                        (AwayTeam.conf == self.conf)) |
+                       ((Game.away_team == str(my_team)) &
+                        (HomeTeam.conf == self.conf))))
 
 class AnlyFilterGames(AnlyFilter):
     """Filter specifying number of qualifying games to evaluate
@@ -83,63 +122,59 @@ class AnlyFilterGames(AnlyFilter):
     def __init__(self, games: int):
         self.games = games
 
-    def apply(self, query: ModelSelect) -> ModelSelect:
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
         return query.limit(self.games)
 
 class AnlyFilterSeasons(AnlyFilter):
     """Filter specifying number of seasons to evaluate
     """
-    def __init__(self, *args, **kwargs):
-        pass
+    type = FilterType.WHERE
+
+    seasons: int
+
+    def __init__(self, seasons: int):
+        """Note that `seasons=1` indicates the current season, regardless of
+        where in the season we currently are; thus, `seasons=2` indicates last
+        season plus this season so far, etc.
+        """
+        self.seasons = seasons
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        end = ctx.season
+        start = end - self.seasons + 1
+        return query.where(Game.season.between(start, end))
 
 class AnlyFilterWeeks(AnlyFilter):
     """Filter specifying which weeks within the season to evaluate
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         pass
 
 class AnlyFilterRecord(AnlyFilter):
     """Filter specifying the current/opponent team point-in-time season
     records for games to evaluate
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         pass
 
 class AnlyFilterSpread(AnlyFilter):
     """Filter specifying the spread (relative to current team) for games
     to evaluate
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         pass
 
 class _AnlyFilterTimeframe(AnlyFilter):
     """Filter specifying the timeframe for the analysis (games considered must be
-    earlier than the reference datetime), applied implicitly by the framework.
+    earlier than the context datetime), applied implicitly by the framework.
     """
     type = FilterType.WHERE
 
-    timeframe: datetime
+    def __init__(self):
+        pass
 
-    def __init__(self, timeframe: datetime):
-        self.timeframe = timeframe
-
-    def apply(self, query: ModelSelect) -> ModelSelect:
-        return query.where((Game.datetime < str(self.timeframe)))
-
-class _AnlyFilterPriTeam(AnlyFilter):
-    """Filter specifying the primary team for the analysis, applied implicitly
-    by the framework.
-    """
-    type = FilterType.WHERE
-
-    team: Team
-
-    def __init__(self, team: Team):
-        self.team = team
-
-    def apply(self, query: ModelSelect) -> ModelSelect:
-        return query.where((Game.home_team == str(self.team)) |
-                           (Game.away_team == str(self.team)))
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        return query.where(Game.datetime < str(ctx.datetime))
 
 class _AnlyFilterRevChron(AnlyFilter):
     """Filter specifying reverse chronological order for results so that the
@@ -147,11 +182,24 @@ class _AnlyFilterRevChron(AnlyFilter):
     """
     type = FilterType.ORDER_BY
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         pass
 
-    def apply(self, query: ModelSelect) -> ModelSelect:
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
         return query.order_by(Game.datetime.desc())
+
+class _AnlyFilterSelf(AnlyFilter):
+    """Filter specifying the target team scope, applied implicitly by the framework
+    if no other team scope filters have been applied
+    """
+    type = FilterType.WHERE
+
+    def __init__(self):
+        pass
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        return query.where((Game.home_team == str(my_team)) |
+                           (Game.away_team == str(my_team)))
 
 #########
 # Stats #
@@ -172,25 +220,44 @@ class AnlyStats(NamedTuple):
 
     @property
     def win_pct(self) -> float:
+        if not self.games:
+            return -1.0
         return len(self.wins) / len(self.games) * 100.0
 
     @property
     def loss_pct(self) -> float:
+        if not self.games:
+            return -1.0
         return len(self.losses) / len(self.games) * 100.0
 
     @property
     def ats_pct(self) -> float:
+        if not self.games:
+            return -1.0
         return len(self.ats_wins) / len(self.games) * 100.0
 
     @property
     def pts_margin(self) -> float:
         """Average points margin
         """
+        if not self.games:
+            return -1.0
         return (self.pts_for - self.pts_against) / len(self.games)
 
 ############
 # Analysis #
 ############
+
+# the following filter classes narrow the scope to the target team, we
+# need to make sure at least one of these is applied for each analysis
+TEAM_SCOPE_FILTERS = {AnlyFilterTeam,
+                      AnlyFilterDiv,
+                      AnlyFilterConf,
+                      _AnlyFilterSelf}
+
+FRAMEWORK_FILTERS = {_AnlyFilterTimeframe,
+                     _AnlyFilterRevChron,
+                     _AnlyFilterSelf}
 
 class Analysis:
     """Analysis object with stats for specified team and evaluation filters
@@ -198,6 +265,7 @@ class Analysis:
     game_ctx:     GameCtx
     team_filters: dict[Team, list[AnlyFilter]]
     team_stats:   dict[Team, AnlyStats | None]
+    team_scope:   dict[Team, bool]
     frozen:       bool
 
     def __init__(self, game_ctx: GameCtx, filters: list[AnlyFilter] = None):
@@ -207,24 +275,30 @@ class Analysis:
         self.game_ctx     = game_ctx
         self.team_filters = {t: filters.copy() for t in teams}
         self.team_stats   = {t: None for t in teams}
+        self.team_scope   = {t: False for t in teams}
         self.frozen       = False
 
         # the following filters are considered part of the framework
-        self.add_filters({t: _AnlyFilterPriTeam(t) for t in teams})
-        self.add_filter(_AnlyFilterTimeframe(self.game_ctx.datetime))
+        self.add_filter(_AnlyFilterTimeframe())
         self.add_filter(_AnlyFilterRevChron())
 
     def add_filter(self, filter: AnlyFilter) -> None:
-        if self.frozen:
+        """Add the same filter to the analysis for both teams in the game
+        context
+        """
+        if self.frozen and type(filter) not in FRAMEWORK_FILTERS:
             raise LogicError("Cannot add filters after analysis is frozen")
         for team in self.team_filters:
             self.team_filters[team].append(filter)
 
     def add_filters(self, filters: dict[Team, AnlyFilter]) -> None:
-        if self.frozen:
-            raise LogicError("Cannot add filters after analysis is frozen")
-        for team in self.team_filters:
-            self.team_filters[team].append(filters[team])
+        """Add different filters to the analysis for the two teams in the
+        game context, indexed by `Team`
+        """
+        for team, filter in filters.items():
+            if self.frozen and type(filter) not in FRAMEWORK_FILTERS:
+                raise LogicError("Cannot add filters after analysis is frozen")
+            self.team_filters[team].append(filter)
 
     def get_stats(self, team: Team) -> AnlyStats:
         if team not in self.team_stats:
@@ -249,7 +323,14 @@ class Analysis:
         self.team_filters[team].sort(key=lambda f: f.type.value)
 
         for filter in self.team_filters[team]:
-            query = filter.apply(query)
+            query = filter.apply(self.game_ctx, team, query)
+            if type(filter) in TEAM_SCOPE_FILTERS:
+                self.team_scope[team] = True
+
+        for team in self.team_scope:
+            if not self.team_scope[team]:
+                self.add_filters({team: _AnlyFilterSelf()})
+                self.team_scope[team] = True
 
         log.debug(query_to_string(query))
         games       = list(query.execute())

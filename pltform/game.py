@@ -200,6 +200,8 @@ class Game(BaseModel):
 #
 # The required context variables are as follows:
 #   game_id:    int | IntegerField
+#   season:     int | IntegerField
+#   week:       int | IntegerField
 #   datetime:   datetime
 #   home_team:  Team
 #   away_team:  Team
