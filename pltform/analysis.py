@@ -6,9 +6,9 @@ from enum import Enum
 
 from peewee import ModelSelect, query_to_string
 
-from .core import LogicError, ImplementationError
+from .core import log, LogicError, ImplementationError
 from .team import Team
-from .game import Game, GameInfo
+from .game import Game, GameCtx
 
 ##############
 # FilterType #
@@ -36,8 +36,8 @@ class AnlyFilter:
     directly.
 
     TODO:
-      - represent dependencies (or implicity invoke)
-      - represent imcompatibilities (and how to signal)
+      - represent dependencies (or implicitly invoke)
+      - represent incompatibilities (and how to signal)
     """
     type: ClassVar[FilterType]
 
@@ -74,7 +74,7 @@ class AnlyFilterDiv(AnlyFilter):
         pass
 
 class AnlyFilterGames(AnlyFilter):
-    """Filter specifying number of qualitfying games to evaluate
+    """Filter specifying number of qualifying games to evaluate
     """
     type = FilterType.LIMIT
 
@@ -195,38 +195,47 @@ class AnlyStats(NamedTuple):
 class Analysis:
     """Analysis object with stats for specified team and evaluation filters
     """
-    game_info: GameInfo
-    team:      Team
-    filters:   list[AnlyFilter]
-    frozen:    bool
-    _stats:    AnlyStats = None
+    game_ctx:     GameCtx
+    team_filters: dict[Team, list[AnlyFilter]]
+    team_stats:   dict[Team, AnlyStats | None]
+    frozen:       bool
 
-    def __init__(self, game_info: GameInfo, team: Team, filters: list[AnlyFilter] = None):
-        """REVISIT: the args for this constructor are kind of messy, but currently need
-        `game_info` to set the timeframe context for the underlying game selection!!!
-        """
-        self.game_info = game_info
-        self.team      = team
-        self.filters   = filters.copy() if filters else []
-        self.frozen    = False
+    def __init__(self, game_ctx: GameCtx, filters: list[AnlyFilter] = None):
+        filters = filters or []
+        teams   = (game_ctx.home_team, game_ctx.away_team)
+
+        self.game_ctx     = game_ctx
+        self.team_filters = {t: filters.copy() for t in teams}
+        self.team_stats   = {t: None for t in teams}
+        self.frozen       = False
 
         # the following filters are considered part of the framework
-        self.filters.append(_AnlyFilterPriTeam(self.team))
-        self.filters.append(_AnlyFilterTimeframe(self.game_info.datetime))
-        self.filters.append(_AnlyFilterRevChron())
+        self.add_filters({t: _AnlyFilterPriTeam(t) for t in teams})
+        self.add_filter(_AnlyFilterTimeframe(self.game_ctx.datetime))
+        self.add_filter(_AnlyFilterRevChron())
 
     def add_filter(self, filter: AnlyFilter) -> None:
         if self.frozen:
             raise LogicError("Cannot add filters after analysis is frozen")
-        self.filters.append(filter)
+        for team in self.team_filters:
+            self.team_filters[team].append(filter)
 
-    @property
-    def stats(self) -> AnlyStats:
-        if not self._stats:
-            self.compute_stats()
-        return self._stats
+    def add_filters(self, filters: dict[Team, AnlyFilter]) -> None:
+        if self.frozen:
+            raise LogicError("Cannot add filters after analysis is frozen")
+        for team in self.team_filters:
+            self.team_filters[team].append(filters[team])
 
-    def compute_stats(self) -> None:
+    def get_stats(self, team: Team) -> AnlyStats:
+        if team not in self.team_stats:
+            raise LogicError(f"Team '{team}' not in game_id {self.game_ctx.game_id}")
+        if not self.team_stats[team]:
+            # first access to stats locks out changes to filters
+            self.frozen = True
+            self.team_stats[team] = self.compute_stats(team)
+        return self.team_stats[team]
+
+    def compute_stats(self, team: Team) -> AnlyStats:
         """Compute stats based on analysis filters added.
 
         The current implementation retrieves all applicable games from the
@@ -237,12 +246,12 @@ class Analysis:
 
         # REVISIT: not sure we need to do this, but may make things easier to
         # debug regardless!
-        self.filters.sort(key=lambda f: f.type.value)
+        self.team_filters[team].sort(key=lambda f: f.type.value)
 
-        for filter in self.filters:
+        for filter in self.team_filters[team]:
             query = filter.apply(query)
 
-        print(query_to_string(query))
+        log.debug(query_to_string(query))
         games       = list(query.execute())
         wins        = []
         losses      = []
@@ -258,12 +267,12 @@ class Analysis:
         for game in games:
             if game.is_tie:
                 ties.append(game)
-            elif game.winner == self.team:
+            elif game.winner == team:
                 wins.append(game)
             else:
                 losses.append(game)
 
-            is_home = game.home_team == self.team
+            is_home = game.home_team == team
             is_away = not is_home
 
             if game.pt_spread is not None:
@@ -287,15 +296,14 @@ class Analysis:
             tos_for     += my_stats[2]
             tos_against += opp_stats[2]
 
-        self._stats = AnlyStats._make((games,
-                                       wins,
-                                       losses,
-                                       ties,
-                                       ats_wins,
-                                       pts_for,
-                                       pts_against,
-                                       yds_for,
-                                       yds_against,
-                                       tos_for,
-                                       tos_against))
-        self.frozen = True
+        return AnlyStats._make((games,
+                                wins,
+                                losses,
+                                ties,
+                                ats_wins,
+                                pts_for,
+                                pts_against,
+                                yds_for,
+                                yds_against,
+                                tos_for,
+                                tos_against))

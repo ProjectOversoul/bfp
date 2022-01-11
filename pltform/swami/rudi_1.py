@@ -17,22 +17,23 @@ class SwamiRudi1(Swami):
         :param game_info: context/schedule info for the game
         :return: predicted winning team and margin of victory
         """
-        filters   = [AnlyFilterGames(1)]
-        home_anly = Analysis(game_info, game_info.home_team, filters)
-        away_anly = Analysis(game_info, game_info.away_team, filters)
+        filters = [AnlyFilterGames(1)]
+        analysis = Analysis(game_info, filters)
+        home_stats = analysis.get_stats(game_info.home_team)
+        away_stats = analysis.get_stats(game_info.away_team)
 
-        if home_anly.stats.wins > away_anly.stats.wins:
+        if home_stats.wins > away_stats.wins:
             winner = game_info.home_team
-            margin = home_anly.stats.pts_margin
-        elif home_anly.stats.wins < away_anly.stats.wins:
+            margin = home_stats.pts_margin
+        elif home_stats.wins < away_stats.wins:
             winner = game_info.away_team
-            margin = away_anly.stats.pts_margin
-        elif home_anly.stats.pts_margin >= away_anly.stats.pts_margin:
+            margin = away_stats.pts_margin
+        elif home_stats.pts_margin >= away_stats.pts_margin:
             # favor home team in case of tie on margin
             winner = game_info.home_team
-            margin = home_anly.stats.pts_margin
+            margin = home_stats.pts_margin
         else:
             winner = game_info.away_team
-            margin = away_anly.stats.pts_margin
+            margin = away_stats.pts_margin
 
         return winner, max(round(margin), 1)

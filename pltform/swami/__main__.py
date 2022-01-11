@@ -26,9 +26,9 @@ def main() -> int:
     info = game.get_info()
     results = game.get_results()
 
-    print(f"Game Info: \n{info}")
-    print(f"\nPick: {team} by {margin}")
-    print(f"\nGame Results: \n{results}")
+    print(f"{info}")
+    print(f"\nYour pick: {team} by {margin}")
+    print(f"\n{results}")
 
     outcome = ("wrong", "right")
     print(f"\nYou were {outcome[int(team == results.winner)]}!")

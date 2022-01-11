@@ -119,46 +119,46 @@ class Game(BaseModel):
     away_tos     = IntegerField(null=True)
 
     @property
-    def winner_pts(self) -> int:
+    def winner_pts(self) -> IntegerField:
         return self.home_pts if self.winner == self.home_team else self.away_pts
 
     @property
-    def winner_yds(self) -> int:
+    def winner_yds(self) -> IntegerField:
         return self.home_yds if self.winner == self.home_team else self.away_yds
 
     @property
-    def winner_tos(self) -> int:
+    def winner_tos(self) -> IntegerField:
         return self.home_tos if self.winner == self.home_team else self.away_tos
 
     @property
-    def loser_pts(self) -> int:
+    def loser_pts(self) -> IntegerField:
         return self.home_pts if self.loser == self.home_team else self.away_pts
 
     @property
-    def loser_yds(self) -> int:
+    def loser_yds(self) -> IntegerField:
         return self.home_yds if self.loser == self.home_team else self.away_yds
 
     @property
-    def loser_tos(self) -> int:
+    def loser_tos(self) -> IntegerField:
         return self.home_tos if self.loser == self.home_team else self.away_tos
 
     @property
-    def home_vs_spread(self) -> float:
+    def home_vs_spread(self) -> float | None:
         if self.pt_spread is None:
             return None
         return self.home_pts + self.pt_spread - self.away_pts
 
     @property
-    def away_vs_spread(self) -> float:
+    def away_vs_spread(self) -> float | None:
         if self.pt_spread is None:
             return None
         return -self.home_vs_spread
 
     @property
-    def vs_over_under(self) -> float:
+    def vs_over_under(self) -> float | None:
         if self.over_under is None:
             return None
-        return winner_pts + loser_pts - self.over_under
+        return self.winner_pts + self.loser_pts - self.over_under
 
     def get_info(self) -> GameInfo:
         """Return just the context/schedule fields as a NamedTuple (e.g. so swamis won't
@@ -188,6 +188,22 @@ class Game(BaseModel):
                                   self.home_vs_spread,
                                   self.away_vs_spread,
                                   self.vs_over_under))
+
+###########
+# GameCtx #
+###########
+
+# This is a "conceptual" abstract base class with minimum/common game context
+# variables needed to implement certain functions that can operate on either
+# `Game` or `GameInfo` instances.  We can't actually implement this is a more
+# robust fashion, since `NamedTuple` doesn't support multiple inheritence.
+#
+# The required context variables are as follows:
+#   game_id:    int | IntegerField
+#   datetime:   datetime
+#   home_team:  Team
+#   away_team:  Team
+GameCtx = GameInfo | Game
 
 ########
 # Main #
