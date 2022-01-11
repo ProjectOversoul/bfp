@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from typing import NamedTuple
+from typing import Optional, NamedTuple
 from datetime import datetime
 from enum import Enum
 
 from peewee import *
 
-from .core import DataError
 from .db_core import BaseModel
 from .team import Team
 
@@ -63,8 +62,24 @@ class GameInfo(NamedTuple):
     datetime:   datetime
     home_team:  Team
     away_team:  Team
-    pt_spread:  float  # "pick" is represented by 0.0
-    over_under: int
+    pt_spread:  Optional[float]  # "pick" is represented by 0.0
+    over_under: Optional[float]
+
+###############
+# GameResults #
+###############
+
+class GameResults(NamedTuple):
+    winner:         Team
+    loser:          Team
+    is_tie:         bool
+    winner_pts:     int
+    loser_pts:      int
+    pts_margin:     int
+    total_pts:      int
+    home_vs_spread: Optional[float]
+    away_vs_spread: Optional[float]
+    vs_over_under:  Optional[float]
 
 ########
 # Game #
@@ -87,15 +102,15 @@ class Game(BaseModel):
     boxscore_url = TextField()
 
     # enrichment info
-    pt_spread    = TextField(null=True)  # e.g. "-7", +3.5", or "pick"
-    over_under   = IntegerField(null=True)
+    pt_spread    = FloatField(null=True)  # negative - home favorite, 0 - pick
+    over_under   = FloatField(null=True)
 
     # result/outcome info
     winner       = ForeignKeyField(Team, column_name='winner',
                                    backref='games_won', null=True)   # home team, if tie
     loser        = ForeignKeyField(Team, column_name='loser',
                                    backref='games_lost', null=True)  # away team, if tie
-    tie          = BooleanField(null=True)
+    is_tie       = BooleanField(null=True)
     home_pts     = IntegerField(null=True)
     home_yds     = IntegerField(null=True)
     home_tos     = IntegerField(null=True)
@@ -104,41 +119,46 @@ class Game(BaseModel):
     away_tos     = IntegerField(null=True)
 
     @property
-    def winner_pts(self) -> IntegerField:
+    def winner_pts(self) -> int:
         return self.home_pts if self.winner == self.home_team else self.away_pts
 
     @property
-    def winner_yds(self) -> IntegerField:
+    def winner_yds(self) -> int:
         return self.home_yds if self.winner == self.home_team else self.away_yds
 
     @property
-    def winner_tos(self) -> IntegerField:
+    def winner_tos(self) -> int:
         return self.home_tos if self.winner == self.home_team else self.away_tos
 
     @property
-    def loser_pts(self) -> IntegerField:
+    def loser_pts(self) -> int:
         return self.home_pts if self.loser == self.home_team else self.away_pts
 
     @property
-    def loser_yds(self) -> IntegerField:
+    def loser_yds(self) -> int:
         return self.home_yds if self.loser == self.home_team else self.away_yds
 
     @property
-    def loser_tos(self) -> IntegerField:
+    def loser_tos(self) -> int:
         return self.home_tos if self.loser == self.home_team else self.away_tos
 
-    def pt_spread_num(self) -> float:
-        """Return point spread as a numeric value with 0.0 representing "pick".
+    @property
+    def home_vs_spread(self) -> float:
+        if self.pt_spread is None:
+            return None
+        return self.home_pts + self.pt_spread - self.away_pts
 
-        Note, this is specified as a method rather than a property because it
-        is just an alternate representation of a variable and not a new piece
-        of information.
-        """
-        if str(self.pt_spread).isnumeric():
-            return float(str(self.pt_spread))
-        elif self.pt_spread == PICK_STR:
-            return 0.0
-        raise DataError(f"Bad value for `pt_spread`: {self.pt_spread}")
+    @property
+    def away_vs_spread(self) -> float:
+        if self.pt_spread is None:
+            return None
+        return -self.home_vs_spread
+
+    @property
+    def vs_over_under(self) -> float:
+        if self.over_under is None:
+            return None
+        return winner_pts + loser_pts - self.over_under
 
     def get_info(self) -> GameInfo:
         """Return just the context/schedule fields as a NamedTuple (e.g. so swamis won't
@@ -152,8 +172,22 @@ class Game(BaseModel):
                                self.datetime,
                                self.home_team,
                                self.away_team,
-                               self.pt_spread_num(),
+                               self.pt_spread,
                                self.over_under))
+
+    def get_results(self) -> GameResults:
+        """Return results as a NamedTuple (some computation involved)
+        """
+        return GameResults._make((self.winner,
+                                  self.loser,
+                                  self.home_pts == self.away_pts,
+                                  self.winner_pts,
+                                  self.loser_pts,
+                                  self.winner_pts - self.loser_pts,
+                                  self.winner_pts + self.loser_pts,
+                                  self.home_vs_spread,
+                                  self.away_vs_spread,
+                                  self.vs_over_under))
 
 ########
 # Main #

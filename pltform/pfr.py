@@ -124,24 +124,7 @@ def get_game_data(years: Iterable[int]) -> int:
     return 0
 
 def game_data_iter(year: int, data: list[dict]) -> dict:
-    """
-    season       : int
-    week         : int  # ordinal within season, or special `Week` value
-    day          : int  # day of week 0-6 (Mon-Sun)
-    datetime     : datetime
-    home_team    : team_code
-    away_team    : team_code
-    boxscore_url : str
-
-    winner       : team_code  # home team, if tie
-    loser        : team_code  # away team, if tie
-    tie          : bool
-    home_pts     : int
-    home_yds     : int
-    home_tos     : int
-    away_pts     : int
-    away_yds     : int
-    away_tos     : int
+    """Iterator for games data, yields a dict suitable for feeding into `Game`
     """
     def week_conv(value: str) -> int:
         if value.isnumeric():
@@ -189,7 +172,7 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
                      'boxscore_url' : rec['boxscore_word'],
                      'winner'       : rec['winner'],  # home team, if tie
                      'loser'        : rec['loser'],   # away team, if tie
-                     'tie'          : is_tie,
+                     'is_tie'       : is_tie,
                      'home_pts'     : home_pts,
                      'home_yds'     : home_yds,
                      'home_tos'     : home_tos,

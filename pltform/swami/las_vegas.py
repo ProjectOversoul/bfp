@@ -4,7 +4,7 @@ from ..team import Team
 from ..game import GameInfo
 from .ext import SwamiExt
 
-class SwamiLasVegas(SwamiLas):
+class SwamiLasVegas(SwamiExt):
     """History of predictions based on Las Vegas odds
     """
     name = "Las Vegas"
