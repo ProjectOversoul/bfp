@@ -4,13 +4,13 @@ from ..team import Team
 from ..game import GameInfo
 from .base import Swami
 
-class SwamiRudi8(Swami):
-    """Rudimentary prediction based on last two seasons' record against division
+class SwamiVsConf(Swami):
+    """Rudimentary prediction based on last two seasons' record against conference
     """
-    name = "Rudi 8"
-    desc = "Based on last two seasons' record against division"
+    name = "Rudi 7"
+    desc = "Based on last two seasons' record against conference"
 
-    def __init__(self, div: str):
+    def __init__(self, conf: str):
         pass
 
     def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:

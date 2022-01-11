@@ -1,19 +1,66 @@
 # -*- coding: utf-8 -*-
 
-from typing import ClassVar
+from os import environ
+from importlib import import_module
 
+from ..core import cfg, ConfigError, ImplementationError
 from ..team import Team
 from ..game import GameInfo
 
+SWAMIS_CONFIG = environ.get('BFP_SWAMIS_CONFIG') or 'swamis.yml'
+cfg.load(SWAMIS_CONFIG)
+
 class Swami:
     """Abstract base class for football swami; each subclass is an implementation
-    of football prediction algorithms
+    of football prediction algorithms, which are configurable via parameters.
     """
-    name: ClassVar[str]
-    desc: ClassVar[str]
+    name:     str
+    about_me: str
     
-    def __init__(self):
-        pass
+    @classmethod
+    def new(cls, swami_name: str, **kwargs: int) -> 'Swami':
+        """Return instantiated `Swami` object based on configured swami, identified
+        by name; note that the named swami entry may override base parameter values
+        specified for the underlying implementation class.
+        """
+        swamis = cfg.config('swamis')
+        if swami_name not in swamis:
+            raise RuntimeError(f"Swami '{swami_name}' is not known")
+        swami_info = swamis[swami_name]
+        class_name = swami_info.get('swami_class')
+        module_path = swami_info.get('module_path')
+        swami_params = swami_info.get('swami_params') or {}
+        if not class_name:
+            raise ConfigError(f"`swami_class` not specified for swami '{swami_name}'")
+        module = import_module(module_path)
+        swami_class = getattr(module, class_name)
+        if not issubclass(swami_class, cls):
+            raise ConfigError(f"`{swami_class.__name__}` not subclass of `{cls.__name__}`")
+
+        swami_params.update(kwargs)
+        return swami_class(swami_name, **swami_params)
+
+    def __init__(self, name: str, **kwargs: int):
+        """Set parameter values as instance variables.  Note that param values may
+        be defined in the `swami_classes` configuration, specified in the `swamis`
+        entry, or overridden at instantiation time (see `new()`).
+
+        Subclasses must invoke this base class constructor first, so that instance
+        variables will be available for validation and/or additional configuration.
+        """
+        self.name = name
+
+        my_class_name = type(self).__name__
+        swami_classes = cfg.config('swami_classes')
+        if my_class_name not in swami_classes:
+            raise ConfigError(f"Swami class `{my_class_name}` is not known")
+
+        base_params = swami_classes[my_class_name].get('class_params')
+        if not base_params:
+            raise ConfigError(f"`class_params` missing for swami class `{my_class_name}`")
+        for key, base_value in base_params.items():
+            # note that empty values in kwargs should override base values
+            setattr(self, key, kwargs[key] if key in kwargs else base_value)
 
     def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:
         """Implement algoritm to pick winner of games
@@ -21,4 +68,4 @@ class Swami:
         :param game_info: context/schedule info for the game
         :return: predicted winning team and margin of victory
         """
-        pass
+        raise ImplementationError("Subclasses must override this method")

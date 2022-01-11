@@ -1,0 +1,84 @@
+---
+default:
+  # Swami classes must specify all valid instantiation parameters; any values
+  # indicated here will serve as default values, which may then be overridden
+  # configured swamis below
+  swami_classes:
+    SwamiVsAll:
+      class_params:
+        num_games:
+        num_seasons:
+    SwamiVsTeam:
+      class_params:
+        num_games:
+        num_seasons:
+    SwamiVsDiv:
+      class_params:
+        num_games:
+        num_seasons:
+    SwamiVsConf:
+      class_params:
+        num_games:
+        num_seasons:
+
+  swamis:
+    Rudi 1:
+      about_me:      "Pick based on last game played"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsAll
+      swami_params:
+        num_games:   1
+    Rudi 2:
+      about_me:      "Pick based on last three games played"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsAll
+      swami_params:
+        num_games:   3
+    Rudi 3:
+      about_me:      "Pick based on last five games played"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsAll
+      swami_params:
+        num_games:   5
+    Rudi 4:
+      about_me:      "Pick based on last matchup between teams"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsTeam
+      swami_params:
+        num_games:   1
+    Rudi 5:
+      about_me:      "Pick based on last two matchups between teams"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsTeam
+      swami_params:
+        num_games:   2
+    Rudi 6:
+      about_me:      "Pick based on last three matchups between teams"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsTeam
+      swami_params:
+        num_games:   3
+    Rudi 7:
+      about_me:      "Pick based on this season against division"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsDiv
+      swami_params:
+        num_seasons: 1
+    Rudi 8:
+      about_me:      "Pick based on last two seasons against division"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsDiv
+      swami_params:
+        num_seasons: 2
+    Rudi 9:
+      about_me:      "Pick based on this season against conference"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsConf
+      swami_params:
+        num_seasons: 1
+    Rudi 10:
+      about_me:      "Pick based on last two seasons against conference"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsConf
+      swami_params:
+        num_seasons: 2

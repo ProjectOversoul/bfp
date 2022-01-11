@@ -4,7 +4,7 @@
 import sys
 
 from ..game import Game
-from . import Swami, SwamiRudi1
+from . import Swami
 
 def main() -> int:
     """Built-in driver to get swami picks for specified game
@@ -17,10 +17,7 @@ def main() -> int:
     name = sys.argv[1]
     game_id = int(sys.argv[2])
 
-    if name not in globals() or not issubclass(globals()[name], Swami):
-        raise RuntimeError(f"Invalid swami '{name}' specified")
-    swami = globals()[name]()
-
+    swami = Swami.new(name)
     game = Game.get_by_id(game_id)
     team, margin = swami.pick_winner(game.get_info())
     info = game.get_info()

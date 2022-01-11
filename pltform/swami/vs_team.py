@@ -4,7 +4,7 @@ from ..team import Team
 from ..game import GameInfo
 from .base import Swami
 
-class SwamiRudi4(Swami):
+class SwamiVsTeam(Swami):
     """Rudimentary prediction based on last matchup between teams
     """
     name = "Rudi 4"
