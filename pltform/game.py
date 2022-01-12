@@ -11,9 +11,9 @@ from peewee import *
 from .db_core import BaseModel
 from .team import Team
 
-########
-# Week #
-########
+################
+# Week/WeekDay #
+################
 
 # values less than 100 represent the week number within the
 # season; playoff games have special values as specified in
@@ -32,6 +32,8 @@ SPC_WEEK_MAP = {'WildCard':  Week.WC,
                 'ConfChamp': Week.CONF,
                 'SuperBowl': Week.SB}
 
+PLAYOFF_WEEKS = (w.value for w in Week)
+
 # values consistent with `datetime.weekday()`
 class WeekDay(Enum):
     MON = 0
@@ -49,6 +51,19 @@ WEEKDAY_MAP = {'Mon': WeekDay.MON,
                'Fri': WeekDay.FRI,
                'Sat': WeekDay.SAT,
                'Sun': WeekDay.SUN}
+
+########
+# Pick #
+########
+
+class Pick(NamedTuple):
+    """Pick for an individual game, whether based on external data or computation
+    from an internal algorithm
+    """
+    su_winner:  Team
+    ats_winner: Team | None  # only if `pt_spread` is available
+    pts_margin: int          # must be greater than 0
+    total_pts:  int
 
 ############
 # GameInfo #
@@ -85,7 +100,7 @@ class GameResults(NamedTuple):
 # Game #
 ########
 
-PICK_STR = "pick"
+PICK_STR = 'pick'  # meaning "pick'em", not related to `Pick` class
 
 class Game(BaseModel):
     """Represents a single game played or scheduled (`datetime` is the future and
@@ -143,6 +158,18 @@ class Game(BaseModel):
         return self.home_tos if self.loser == self.home_team else self.away_tos
 
     @property
+    def ats_winner(self) -> ForeignKeyField | None:
+        if self.pt_spread is None or self.home_vs_spread == 0.0:
+            return None
+        return self.home_team if self.home_vs_spread > 0.0 else self.away_team
+
+    @property
+    def ats_loser(self) -> ForeignKeyField | None:
+        if self.pt_spread is None or self.home_vs_spread == 0.0:
+            return None
+        return self.home_team if self.home_vs_spread < 0.0 else self.away_team
+
+    @property
     def home_vs_spread(self) -> float | None:
         if self.pt_spread is None:
             return None
@@ -193,18 +220,19 @@ class Game(BaseModel):
 # GameCtx #
 ###########
 
-# This is a "conceptual" abstract base class with minimum/common game context
-# variables needed to implement certain functions that can operate on either
-# `Game` or `GameInfo` instances.  We can't actually implement this is a more
-# robust fashion, since `NamedTuple` doesn't support multiple inheritence.
-#
-# The required context variables are as follows:
-#   game_id:    int | IntegerField
-#   season:     int | IntegerField
-#   week:       int | IntegerField
-#   datetime:   datetime
-#   home_team:  Team
-#   away_team:  Team
+"""This is a "conceptual" abstract base class with minimum/common game context
+variables needed to implement certain functions that can operate on either
+`Game` or `GameInfo` instances.  We can't actually implement this is a more
+robust fashion, since `NamedTuple` doesn't support multiple inheritence.
+
+The required context variables are as follows:
+  game_id:    int | IntegerField
+  season:     int | IntegerField
+  week:       int | IntegerField
+  datetime:   datetime
+  home_team:  Team
+  away_team:  Team
+"""
 GameCtx = GameInfo | Game
 
 ########

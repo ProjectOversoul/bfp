@@ -1,0 +1,15 @@
+---
+default:
+  pools:
+    Pool A:
+      swamis:
+        - Rudi 1
+        - Rudi 2
+        - Rudi 3
+        - Rudi 4
+        - Rudi 5
+        - Rudi 6
+        - Rudi 7
+        - Rudi 8
+        - Rudi 9
+        - Rudi 10

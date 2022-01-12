@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..team import Team
-from ..game import GameInfo
+from ..game import GameInfo, Pick
 from ..analysis import Analysis, AnlyFilterGames, AnlyFilterSeasons, AnlyFilterTeam
 from .base import Swami
 
@@ -17,7 +16,7 @@ class SwamiVsTeam(Swami):
         if not self.num_games and not self.num_seasons:
             raise RuntimeError("Either `num_games` or `num_seasons` must be specified")
 
-    def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:
+    def get_pick(self, game_info: GameInfo) -> Pick:
         """Implement algorithm to pick winner of games
 
         :param game_info: context/schedule info for the game
@@ -38,6 +37,7 @@ class SwamiVsTeam(Swami):
         analysis.add_filters(opp_filters)
         home_stats = analysis.get_stats(home_team)
         away_stats = analysis.get_stats(away_team)
+        total_pts  = (home_stats.total_pts + away_stats.total_pts) / 2.0
 
         if len(home_stats.wins) > len(away_stats.wins):
             winner = game_info.home_team
@@ -53,4 +53,4 @@ class SwamiVsTeam(Swami):
             winner = away_team
             margin = away_stats.pts_margin
 
-        return winner, max(round(margin), 1)
+        return Pick(winner, None, max(round(margin), 1), round(total_pts))

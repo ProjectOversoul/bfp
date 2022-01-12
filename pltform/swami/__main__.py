@@ -19,7 +19,7 @@ def main() -> int:
 
     swami = Swami.new(name)
     game = Game.get_by_id(game_id)
-    team, margin = swami.pick_winner(game.get_info())
+    team, _, margin, total = swami.get_pick(game.get_info())
     info = game.get_info()
     results = game.get_results()
 

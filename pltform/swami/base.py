@@ -4,11 +4,10 @@ from os import environ
 from importlib import import_module
 
 from ..core import cfg, ConfigError, ImplementationError
-from ..team import Team
-from ..game import GameInfo
+from ..game import GameInfo, Pick
 
-SWAMIS_CONFIG = environ.get('BFP_SWAMIS_CONFIG') or 'swamis.yml'
-cfg.load(SWAMIS_CONFIG)
+SWAMI_CONFIG = environ.get('BFP_SWAMI_CONFIG') or 'swamis.yml'
+cfg.load(SWAMI_CONFIG)
 
 class Swami:
     """Abstract base class for football swami; each subclass is an implementation
@@ -62,7 +61,13 @@ class Swami:
             # note that empty values in kwargs should override base values
             setattr(self, key, kwargs[key] if key in kwargs else base_value)
 
-    def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:
+    def __str__(self) -> str:
+        return self.name
+
+    def __hash__(self) -> int:
+        return hash((self.__class__, self.name))
+
+    def get_pick(self, game_info: GameInfo) -> Pick:
         """Implement algoritm to pick winner of games
 
         :param game_info: context/schedule info for the game

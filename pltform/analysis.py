@@ -244,6 +244,14 @@ class AnlyStats(NamedTuple):
             return -1.0
         return (self.pts_for - self.pts_against) / len(self.games)
 
+    @property
+    def total_pts(self) -> float:
+        """Average points margin
+        """
+        if not self.games:
+            return -1.0
+        return (self.pts_for + self.pts_against) / len(self.games)
+
 ############
 # Analysis #
 ############
@@ -307,6 +315,7 @@ class Analysis:
             # first access to stats locks out changes to filters
             self.frozen = True
             self.team_stats[team] = self.compute_stats(team)
+            log.debug(f"{team} stats: {self.team_stats[team]}")
         return self.team_stats[team]
 
     def compute_stats(self, team: Team) -> AnlyStats:
@@ -332,7 +341,7 @@ class Analysis:
                 self.add_filters({team: _AnlyFilterSelf()})
                 self.team_scope[team] = True
 
-        log.debug(query_to_string(query))
+        log.debug(f"{team} SQL: " + query_to_string(query))
         games       = list(query.execute())
         wins        = []
         losses      = []

@@ -17,10 +17,10 @@ BASE_DIR     = os.path.realpath(os.path.join(FILE_DIR, os.pardir))
 
 CONFIG_DIR   = 'config'
 DFLT_CONFIG  = ['config.yml']
-CONFIG_FILES = environ.get('BPF_CONFIG_FILES') or DFLT_CONFIG
+CONFIG_FILES = environ.get('BFP_CONFIG_FILES') or DFLT_CONFIG
 cfg          = utils.Config(CONFIG_FILES, os.path.join(BASE_DIR, CONFIG_DIR))
 
-DEBUG        = int(environ.get('BPF_DEBUG') or 0)
+DEBUG        = int(environ.get('BFP_DEBUG') or 0)
 
 ########
 # Data #
@@ -52,7 +52,7 @@ def ArchiveDataFile(file_name: str) -> None:
 ###########
 
 # create logger (TODO: logging parameters belong in config file as well!!!)
-LOGGER_NAME  = environ.get('BPF_LOG_NAME') or 'bpf'
+LOGGER_NAME  = environ.get('BFP_LOG_NAME') or 'bfp'
 LOG_DIR      = 'log'
 LOG_FILE     = LOGGER_NAME + '.log'
 LOG_PATH     = os.path.join(BASE_DIR, LOG_DIR, LOG_FILE)
