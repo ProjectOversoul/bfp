@@ -9,13 +9,11 @@ class SwamiVsAll(Swami):
     """
     num_games:   int
     num_seasons: int
-    analysis:    Analysis | None
 
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
         if not self.num_games and not self.num_seasons:
             raise RuntimeError("Either `num_games` or `num_seasons` must be specified")
-        self.analysis = None
 
     def get_pick(self, game_info: GameInfo) -> Pick:
         """Implement algorithm to pick winner of games
@@ -29,10 +27,9 @@ class SwamiVsAll(Swami):
             base_filter = AnlyFilterGames(self.num_games)
         else:
             raise RuntimeError("Either `num_seasons` or `num_games` must be specified")
-        if not self.analysis:
-            self.analysis = Analysis(game_info, [base_filter])
-        home_stats = self.analysis.get_stats(game_info.home_team)
-        away_stats = self.analysis.get_stats(game_info.away_team)
+        analysis   = Analysis(game_info, [base_filter])
+        home_stats = analysis.get_stats(game_info.home_team)
+        away_stats = analysis.get_stats(game_info.away_team)
         total_pts  = (home_stats.total_pts + away_stats.total_pts) / 2.0
 
         if len(home_stats.wins) > len(away_stats.wins):

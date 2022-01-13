@@ -1,78 +1,103 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 from os import environ
 from typing import Any, TextIO
 from collections.abc import Iterable
+from collections import Counter
+from itertools import groupby
+from enum import Enum
 
 from peewee import query_to_string
 
-from .core import cfg, log
-from .game import Game
-from .pick import Pick
+from .utils import parse_argv
+from .core import cfg, log, LogicError
+from .game import Game, Pick, PLAYOFF_WEEKS, WeekStr
 from .swami import Swami
 
 POOL_CONFIG = environ.get('BFP_POOL_CONFIG') or 'pools.yml'
 cfg.load(POOL_CONFIG)
 
-#############
-# RunResult #
-#############
+#########
+# Score #
+#########
 
-class RunResult:
-    su_pct:  float
-    ats_pct: float
+class Score(Counter):
+    """This represents the scoring of picks within a pool, run (e.g. season), week,
+    or individual game (and not football-level scores).  Emulates a list that looks
+    like `[wins, losses, ties]`, except it does some tabulation for us.
+    """
+    @staticmethod
+    def init_scores() -> list['Score']:
+        return [Score.empty(), Score.empty()]
 
-    def get_su_score(self) -> float:
-        """Return straight-up score for pool result
-        """
-        pass
+    @staticmethod
+    def empty() -> 'Score':
+        return Score(0, 0, 0)
 
-    def get_ats_score(self) -> float:
-        """Return against-the-spread score for pool result
-        """
-        pass
+    def __init__(self, wins: int, losses: int, ties: int):
+        super().__init__({0: wins, 1: losses, 2: ties})
 
-    def get_aggregate_score(self) -> float:
-        """Return aggregate score for pool result
-        """
-        pass
+    def is_empty(self):
+        return self.total() == 0
 
-##############
-# PoolResult #
-##############
+# some useful type aliases
+Swamis        = list[Swami]
+Scores        = list[Score]       # [su_score, ats_score]
+GamePick      = dict[Game, Pick]
+SwamiPick     = dict[Swami, Pick]
+SwamiGamePick = dict[Swami, GamePick]
+WeekScores    = dict[int, Scores]
+SwamiScores   = dict[Swami, Scores]
 
-class PoolResult:
-    su_pct:  float
-    ats_pct: float
+def compute_scores(game: Game, pick: Pick) -> Scores:
+    """Return SU and ATS score tuples for an individual  pick against a game
+    (all values will be 1 or 0).  Empty `Score` is returned for any game not
+    yet played or portion of the pick not made (e.g. no ATS pick).
+    """
+    if not game.winner:
+        return [Score.empty(), Score.empty()]
 
-    def get_su_score(self) -> float:
-        """Return straight-up score for pool result
-        """
-        pass
+    su_win   = not game.is_tie and pick.su_winner == game.winner
+    su_loss  = not game.is_tie and pick.su_winner != game.winner
+    su_tie   = game.is_tie
+    su_score = Score(int(su_win), int(su_loss), int(su_tie))
+    if game.pt_spread and pick.ats_winner:
+        # `not game.ats_winner` indicates a push
+        ats_win   = game.ats_winner and pick.ats_winner == game.ats_winner
+        ats_loss  = game.ats_winner and pick.ats_winner != game.ats_winner
+        ats_tie   = not game.ats_winner
+        ats_score = Score(int(ats_win), int(ats_loss), int(ats_tie))
+    else:
+        ats_score = Score.empty()
 
-    def get_ats_score(self) -> float:
-        """Return against-the-spread score for pool result
-        """
-        pass
-
-    def get_aggregate_score(self) -> float:
-        """Return aggregate score for pool result
-        """
-        pass
+    return [su_score, ats_score]
 
 ###########
 # PoolRun #
 ###########
 
+# used in reporting
+SWAMI_COL = "Swami"
+TOTAL_COL = "Total"
+
+class PoolSeg(Enum):
+    SU  = 0
+    ATS = 1
+
 class PoolRun:
     """Run a pool for a specified timeframe (i.e. complete or partial season)
     """
-    swamis:      list[Swami]
-    season:      int
-    weeks:       list[int] | None
-    swami_picks: dict[Swami, dict[Game, Pick]]
-    game_picks:  dict[Game, dict[Swami, Pick]]
-    results:     dict[Swami, RunResult]
+    swamis:       list[Swami]
+    season:       int
+    weeks:        list[int] | None
+    week_games:   dict[int, list[Game]]
+    game_picks:   dict[Game, SwamiPick]
+    week_picks:   dict[int, SwamiGamePick]
+    week_scores:  dict[int, SwamiScores]
+    swami_scores: dict[Swami, WeekScores]
+    tot_scores:   SwamiScores
 
     def __init__(self, swamis: Iterable[Swami], season: int, weeks: Iterable[int] = None):
         """Run pool for the specified season, optionally narrowed to specific
@@ -82,45 +107,163 @@ class PoolRun:
         """
         if weeks is not None:
             weeks = list(weeks)
-        self.swamis      = list(swamis)
-        self.season      = season
-        self.weeks       = weeks
-        self.swami_picks = {}
-        self.game_picks  = {}
+        self.swamis       = list(swamis)
+        self.season       = season
+        self.weeks        = weeks
+        self.week_games   = {}
+        self.game_picks   = {}
+        self.week_picks   = {}
+        self.week_scores  = {}
+        self.swami_scores = {}
+        self.tot_scores   = {}
 
-        for swami in self.swamis:
-            self.swami_picks[swami] = {}
-
-    @property
-    def winner(self) -> Swami:
-        return next(iter(self.results))
+    def get_winners(self) -> tuple[Swamis, Swamis | None]:
+        """Not a pretty way to do this, but oh well...
+        """
+        if not self.tot_scores:
+            raise LogicError("Results yet not computed")
+        by_su = sorted(self.tot_scores.items(), key=lambda s: -s[1][0][0])
+        by_ats = sorted(self.tot_scores.items(), key=lambda s: -s[1][1][0])
+        su_wins, su_scores = next(groupby(by_su, key=lambda s: s[1][0][0]))
+        ats_wins, ats_scores = next(groupby(by_ats, key=lambda s: s[1][1][0]))
+        su_winner = [s[0] for s in su_scores]
+        ats_winner = [s[0] for s in ats_scores] if ats_wins > 0 else None
+        return su_winner, ats_winner
 
     def run(self) -> None:
+        """Tabulate picks for the season from the competing swamis, and compute
+        results against the actual game outcomes.
+
+        Sample code for sorting/use the run results:
+            run = pool.get_run(2021)
+            run.run()
+
+            # find week 1 SU winner
+            week_1 = run.week_scores[1]
+            week_1_by_su = sorted(week_1.items(), key=lambda s: -s[1][0][0])
+            week_1_su_winner = next(iter(week_1_by_su))[0]
+
+            # find season (2021) ATS winner
+            season = run.tot_scores
+            season_by_ats = sorted(season.items(), key=lambda s: -s[1][1][0])
+            season_ats_winner = next(iter(season_by_ats))[0]
+        """
         query = Game.select().where(Game.season == self.season)
         if self.weeks:
-            query = query.where(Game.weeks << self.weeks)
+            query = query.where(Game.week << self.weeks)
         query = query.order_by(Game.season, Game.week, Game.datetime)
 
         log.debug("Pool games SQL: " + query_to_string(query))
         games = query.execute()
 
+        # note, could use `itertools.groupby` on week
         for game in games:
+            week = game.week
+            if week not in self.week_games:
+                self.week_games[week] = []
+            self.week_games[week].append(game)
             self.game_picks[game] = {}
+            if week not in self.week_picks:
+                self.week_picks[week] = {}
             for swami in self.swamis:
+                log.debug(f"Picks for week {week}, game {game.matchup}, swami {swami}")
                 pick = swami.get_pick(game.get_info())
-                self.swami_picks[swami][game] = pick
+                if swami not in self.week_picks[week]:
+                    self.week_picks[week][swami] = {}
                 self.game_picks[game][swami] = pick
+                self.week_picks[week][swami][game] = pick
 
-    def compute_results(self):
-        pass
+        if not self.game_picks:
+            raise RuntimeError("No games selected")
+        self.compute_results()
 
-    def get_results(self) -> list[dict[Swami, PoolResult]]:
-        """Return dictionary of pool results, ordered by aggregate score (descending)
+    def compute_results(self) -> None:
+        """Uses the data in `self.game_picks` and the actual game results to
+        populate the following variables:
+          `self.week_scores`  - used to determine weekly winners
+          `self.tot_scores`   - used to determine season winners
+          `self.swami_scores` - used for `print_results()`
+
+        Note that the results are not sorted within these fields; it is up to
+        the caller to sort, see `run()` for examples
         """
-        pass
+        for game, swami_picks in self.game_picks.items():
+            week = game.week
+            if week not in self.week_scores:
+                self.week_scores[week] = {}
+            for swami, pick in swami_picks.items():
+                scores = compute_scores(game, pick)
+                if swami not in self.week_scores[week]:
+                    self.week_scores[week][swami] = Score.init_scores()
+                if swami not in self.swami_scores:
+                    self.swami_scores[swami] = {}
+                if week not in self.swami_scores[swami]:
+                    self.swami_scores[swami][week] = Score.init_scores()
+                if swami not in self.tot_scores:
+                    self.tot_scores[swami] = Score.init_scores()
+                self.swami_scores[swami][week][0] += scores[0]
+                self.week_scores[week][swami][0] += scores[0]
+                self.tot_scores[swami][0] += scores[0]
+                if not scores[1].is_empty:
+                    self.swami_scores[swami][week][1] += scores[1]
+                    self.week_scores[week][swami][1] += scores[1]
+                    self.tot_scores[swami][1] += scores[1]
 
-    def print_results(self, file: TextIO = None) -> None:
-        pass
+    def print_results(self, pool_seg: PoolSeg, file: TextIO = None) -> None:
+        """Print season summary and weekly picks by swami for the specified
+        pool "segment" (i.e. SU vs. ATS).
+        """
+        print("\nSeason Summary\n--------------")
+        header = self.season_report_hdr()
+        print("\t".join(header), file=file)
+        for report_data in self.season_report_iter(pool_seg):
+            print("\t".join(str(report_data.get(key)) for key in header), file=file)
+
+        for week in self.week_scores:
+            print(f"\n{WeekStr(week)}\n{len(WeekStr(week)) * '-'}")
+            header = self.week_report_hdr(week)
+            print("\t".join(header), file=file)
+            for report_data in self.week_report_iter(week, pool_seg):
+                print("\t".join(str(report_data.get(key)) for key in header), file=file)
+
+    def season_report_hdr(self) -> list[str]:
+        week_names = [WeekStr(w) for w in self.week_scores]
+        return [SWAMI_COL] + week_names + [TOTAL_COL]
+
+    def season_report_iter(self, pool_seg: PoolSeg) -> dict[str, int]:
+        score_idx = pool_seg.value
+        by_su = sorted(self.tot_scores.items(), key=lambda s: -s[1][0][0])
+        for swami, tot_score in by_su:
+            week_scores = self.swami_scores[swami]
+            wins = {WeekStr(w): s[score_idx][0] for w, s in week_scores.items()}
+            tot_wins = self.tot_scores[swami][score_idx][0]
+            yield {SWAMI_COL: swami.name} | wins | {TOTAL_COL: tot_wins}
+
+    def week_report_hdr(self, week: int) -> list[str]:
+        matchups = [g.matchup for g in self.week_games[week]]
+        return [SWAMI_COL] + matchups
+
+    def week_report_iter(self, week: int, pool_seg: PoolSeg) -> dict[str, int]:
+        score_idx = pool_seg.value
+        winner_row = {g.matchup: g.winner if not g.is_tie else "-tie-"
+                      for g in self.week_games[week]}
+        yield {SWAMI_COL: "Winner"} | winner_row
+        winners = set(g.winner for g in self.week_games[week] if not g.is_tie)
+        for swami, game_picks in self.week_picks[week].items():
+            picks = {g.matchup: str(p.su_winner) + '*' if p.su_winner in winners else p.su_winner
+                     for g, p in game_picks.items()}
+            yield {SWAMI_COL: swami.name} | picks
+
+##############
+# PoolResult #
+##############
+
+class PoolResult:
+    """Not sure what this is yet, perhaps history of results by season (i.e. run).
+    Will probably need to think about the appropriate persistence mechanism for
+    this, whether database or pickle/shelve.
+    """
+    pass
 
 ########
 # Pool #
@@ -165,3 +308,66 @@ class Pool:
         self.runs.append(run)
 
         return run
+
+########
+# Main #
+########
+
+def main() -> int:
+    """Built-in driver to run a pool for a specified timeframe--that is,
+    a full or partial season.
+
+    Later, if/when we are persisting pool results, we will need to revamp
+    this to be the overall pool manager interface (or create a new script/
+    app to do so).
+
+    Usage: pool.py <pool_name> <season> [<weeks>]
+
+    where <weeks> may be specified as:
+      - single week    (e.g. '17')
+      - list of weeks  (e.g. '6,7,8,9')
+      - range of weeks (e.g. '9-17')
+      - special values: 'playoffs', etc.
+    """
+    if len(sys.argv) not in (3, 4):
+        raise RuntimeError("Incorrect number of arguments")
+
+    name = sys.argv[1]
+    season = int(sys.argv[2])
+    args, kwargs = parse_argv(sys.argv[3:])
+    if len(args) > 1 or kwargs:
+        raise RuntimeError("Incorrect number of arguments, or bad value")
+
+    if args:
+        # special parsing for <weeks> arg, and convert to list
+        weeks = args[0]
+        if isinstance(weeks, str):
+            if weeks == 'playoffs':
+                weeks = PLAYOFF_WEEKS
+            elif ',' in weeks:
+                weeks = [int(x) for x in weeks.split(',')]
+            elif '-' in weeks:
+                start, end = weeks.split('-', 1)
+                weeks = range(int(start), int(end) + 1)
+            else:
+                weeks = [int(weeks)]
+        else:
+            weeks = [weeks]
+    else:
+        weeks = None
+
+    pool = Pool(name)
+    run = pool.get_run(season, weeks)
+    run.run()
+
+    winners = run.get_winners()
+    su_winners = ', '.join(str(w) for w in winners[0])
+    ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
+    print(f"Winners are: SU  - {su_winners}\n"
+          f"             ATS - {ats_winners}")
+    run.print_results(PoolSeg.SU)
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -34,6 +34,16 @@ SPC_WEEK_MAP = {'WildCard':  Week.WC,
 
 PLAYOFF_WEEKS = (w.value for w in Week)
 
+PLAYOFF_WEEK_STR = {100: 'WildCard',
+                    200: 'Division',
+                    300: 'ConfChamp',
+                    400: 'SuperBowl'}
+
+def WeekStr(week: int) -> str:
+    if week >= 100:
+        return PLAYOFF_WEEK_STR[week]
+    return f"Week {week}"
+
 # values consistent with `datetime.weekday()`
 class WeekDay(Enum):
     MON = 0
@@ -132,6 +142,10 @@ class Game(BaseModel):
     away_pts     = IntegerField(null=True)
     away_yds     = IntegerField(null=True)
     away_tos     = IntegerField(null=True)
+
+    @property
+    def matchup(self) -> str:
+        return f"{self.away_team} vs {self.home_team}"
 
     @property
     def winner_pts(self) -> IntegerField:

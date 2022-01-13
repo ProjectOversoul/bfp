@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from typing import ClassVar, NamedTuple
+from collections import Counter
 from enum import Enum
 
 from peewee import ModelSelect, query_to_string
@@ -52,7 +53,7 @@ class AnlyFilterVenue(AnlyFilter):
     """Filter specifying home vs. away games to evaluate
     """
     def __init__(self):
-        pass
+        raise ImplementationError("Not yet implemented")
 
 class AnlyFilterTeam(AnlyFilter):
     """Filter specifying opposing team to evaluate
@@ -148,21 +149,21 @@ class AnlyFilterWeeks(AnlyFilter):
     """Filter specifying which weeks within the season to evaluate
     """
     def __init__(self):
-        pass
+        raise ImplementationError("Not yet implemented")
 
 class AnlyFilterRecord(AnlyFilter):
     """Filter specifying the current/opponent team point-in-time season
     records for games to evaluate
     """
     def __init__(self):
-        pass
+        raise ImplementationError("Not yet implemented")
 
 class AnlyFilterSpread(AnlyFilter):
     """Filter specifying the spread (relative to current team) for games
     to evaluate
     """
     def __init__(self):
-        pass
+        raise ImplementationError("Not yet implemented")
 
 class _AnlyFilterTimeframe(AnlyFilter):
     """Filter specifying the timeframe for the analysis (games considered must be
@@ -204,6 +205,17 @@ class _AnlyFilterSelf(AnlyFilter):
 #########
 # Stats #
 #########
+
+class StatsCounter(Counter):
+    """Emulates a list that looks like `[pts, yds, tos]`, except it does
+    some tabulation for us.
+    """
+    @staticmethod
+    def empty() -> 'StatsCounter':
+        return StatsCounter(0, 0, 0)
+
+    def __init__(self, pts: int, yds: int, tos: int):
+        super().__init__({0: pts, 1: yds, 2: tos})
 
 class AnlyStats(NamedTuple):
     games:       list[Game]
@@ -273,7 +285,6 @@ class Analysis:
     game_ctx:     GameCtx
     team_filters: dict[Team, list[AnlyFilter]]
     team_stats:   dict[Team, AnlyStats | None]
-    team_scope:   dict[Team, bool]
     frozen:       bool
 
     def __init__(self, game_ctx: GameCtx, filters: list[AnlyFilter] = None):
@@ -283,7 +294,6 @@ class Analysis:
         self.game_ctx     = game_ctx
         self.team_filters = {t: filters.copy() for t in teams}
         self.team_stats   = {t: None for t in teams}
-        self.team_scope   = {t: False for t in teams}
         self.frozen       = False
 
         # the following filters are considered part of the framework
@@ -318,51 +328,48 @@ class Analysis:
             log.debug(f"{team} stats: {self.team_stats[team]}")
         return self.team_stats[team]
 
-    def compute_stats(self, team: Team) -> AnlyStats:
+    def compute_stats(self, anly_team: Team) -> AnlyStats:
         """Compute stats based on analysis filters added.
 
         The current implementation retrieves all applicable games from the
         database (without any database-level aggregation), and iterates over
         the results to compute the stats.
         """
+        for team_i, filters in self.team_filters.items():
+            team_scope = False
+            for filter in filters:
+                if type(filter) in TEAM_SCOPE_FILTERS:
+                    team_scope = True
+            if not team_scope:
+                self.add_filters({team_i: _AnlyFilterSelf()})
+
         query = Game.select()
 
         # REVISIT: not sure we need to do this, but may make things easier to
         # debug regardless!
-        self.team_filters[team].sort(key=lambda f: f.type.value)
+        self.team_filters[anly_team].sort(key=lambda f: f.type.value)
 
-        for filter in self.team_filters[team]:
-            query = filter.apply(self.game_ctx, team, query)
-            if type(filter) in TEAM_SCOPE_FILTERS:
-                self.team_scope[team] = True
+        for filter in self.team_filters[anly_team]:
+            query = filter.apply(self.game_ctx, anly_team, query)
 
-        for team in self.team_scope:
-            if not self.team_scope[team]:
-                self.add_filters({team: _AnlyFilterSelf()})
-                self.team_scope[team] = True
-
-        log.debug(f"{team} SQL: " + query_to_string(query))
-        games       = list(query.execute())
-        wins        = []
-        losses      = []
-        ties        = []
-        ats_wins    = []
-        pts_for     = 0
-        pts_against = 0
-        yds_for     = 0
-        yds_against = 0
-        tos_for     = 0
-        tos_against = 0
+        log.debug(f"{anly_team} SQL: " + query_to_string(query))
+        games         = list(query.execute())
+        wins          = []
+        losses        = []
+        ties          = []
+        ats_wins      = []
+        stats_for     = StatsCounter.empty()
+        stats_against = StatsCounter.empty()
 
         for game in games:
             if game.is_tie:
                 ties.append(game)
-            elif game.winner == team:
+            elif game.winner == anly_team:
                 wins.append(game)
             else:
                 losses.append(game)
 
-            is_home = game.home_team == team
+            is_home = game.home_team == anly_team
             is_away = not is_home
 
             if game.pt_spread is not None:
@@ -371,29 +378,22 @@ class Analysis:
                 elif is_away and game.away_vs_spread > 0.0:
                     ats_wins.append(game)
 
-            # NOTE: this could probably be done more neatly using something
-            # like `collection.Counter`, but not really worth doing unless/
-            # until adding tons more stats here
-            home_stats  = (game.home_pts, game.home_yds, game.home_tos)
-            away_stats  = (game.away_pts, game.away_yds, game.away_tos)
+            home_stats  = StatsCounter(game.home_pts, game.home_yds, game.home_tos)
+            away_stats  = StatsCounter(game.away_pts, game.away_yds, game.away_tos)
             my_stats    = home_stats if is_home else away_stats
             opp_stats   = away_stats if is_home else home_stats
 
-            pts_for     += my_stats[0]
-            pts_against += opp_stats[0]
-            yds_for     += my_stats[1]
-            yds_against += opp_stats[1]
-            tos_for     += my_stats[2]
-            tos_against += opp_stats[2]
+            stats_for     += my_stats
+            stats_against += opp_stats
 
         return AnlyStats._make((games,
                                 wins,
                                 losses,
                                 ties,
                                 ats_wins,
-                                pts_for,
-                                pts_against,
-                                yds_for,
-                                yds_against,
-                                tos_for,
-                                tos_against))
+                                stats_for[0],
+                                stats_against[0],
+                                stats_for[1],
+                                stats_against[1],
+                                stats_for[2],
+                                stats_against[2]))

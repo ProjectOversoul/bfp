@@ -162,6 +162,7 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
             home_pts  = rec['pts_lose']
             home_yds  = rec['yards_lose']
             home_tos  = rec['to_lose']
+        played = home_pts is not None
 
         game_data = {'season'       : year,
                      'week'         : week_conv(rec['week_num']),
@@ -170,9 +171,9 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
                      'home_team'    : home_team,
                      'away_team'    : away_team,
                      'boxscore_url' : rec['boxscore_word'],
-                     'winner'       : rec['winner'],  # home team, if tie
-                     'loser'        : rec['loser'],   # away team, if tie
-                     'is_tie'       : is_tie,
+                     'winner'       : rec['winner'] if played else None,  # home team, if tie
+                     'loser'        : rec['loser']  if played else None,  # away team, if tie
+                     'is_tie'       : is_tie        if played else None,
                      'home_pts'     : home_pts,
                      'home_yds'     : home_yds,
                      'home_tos'     : home_tos,
