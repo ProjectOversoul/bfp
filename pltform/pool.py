@@ -214,6 +214,12 @@ class PoolRun:
         """Print season summary and weekly picks by swami for the specified
         pool "segment" (i.e. SU vs. ATS).
         """
+        winners = self.get_winners()
+        su_winners = ', '.join(str(w) for w in winners[0])
+        ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
+        print(f"Winners are: SU  - {su_winners}\n"
+              f"             ATS - {ats_winners}", file=file)
+
         print("\nSeason Summary\n--------------")
         header = self.season_report_hdr()
         print("\t".join(header), file=file)
@@ -226,6 +232,35 @@ class PoolRun:
             print("\t".join(header), file=file)
             for report_data in self.week_report_iter(week, pool_seg):
                 print("\t".join(str(report_data.get(key)) for key in header), file=file)
+
+    def print_results_md(self, pool_seg: PoolSeg, file: TextIO = None) -> None:
+        """Same as `print_results()` except in markdown format
+        """
+        winners = self.get_winners()
+        su_winners = ', '.join(str(w) for w in winners[0])
+        ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
+        print("\n## Winners ##")
+        print("| Segment | Winner(s) |", file=file)
+        print("| --- | --- |", file=file)
+        print(f"| SU | {su_winners} |", file=file)
+        print(f"| ATS | {ats_winners} |", file=file)
+
+        print("\n## Season Summary ##")
+        header = self.season_report_hdr()
+        print("| ", " | ".join(header), " |", file=file)
+        print("| ", " --- |" * len(header), file=file)
+        for report_data in self.season_report_iter(pool_seg):
+            iter_data = (str(report_data.get(key)) for key in header)
+            print("| ", " | ".join(iter_data), " |", file=file)
+
+        for week in self.week_scores:
+            print(f"\n### {WeekStr(week)} ###")
+            header = self.week_report_hdr(week)
+            print("| ", " | ".join(header), " |", file=file)
+            print("| ", " --- |" * len(header), file=file)
+            for report_data in self.week_report_iter(week, pool_seg):
+                iter_data = (str(report_data.get(key)) for key in header)
+                print("| ", " | ".join(iter_data), " |", file=file)
 
     def season_report_hdr(self) -> list[str]:
         """Header field names for the Season Report, which represent the keys for
@@ -261,7 +296,7 @@ class PoolRun:
         all of the swamis in the pool.
         """
         score_idx = pool_seg.value
-        winner_row = {g.matchup: g.winner if not g.is_tie else "-tie-"
+        winner_row = {g.matchup: (g.winner if not g.is_tie else "-tie-") if g.winner else '-tbd-'
                       for g in self.week_games[week]}
         yield {SWAMI_COL: "Winner"} | winner_row
         winners = set(g.winner for g in self.week_games[week] if not g.is_tie)
@@ -333,6 +368,13 @@ class Pool:
 
         return run
 
+    def print_swami_bios_md(self, file: TextIO = None) -> None:
+        print("\n## Swami Bios ##", file=file)
+        print("| Name | About |", file=file)
+        print("| --- | --- |", file=file)
+        for name, swami in self.swamis.items():
+            print(f"| {name} | {swami.about_me} |", file=file)
+
 ########
 # Main #
 ########
@@ -383,13 +425,8 @@ def main() -> int:
     pool = Pool(name)
     run = pool.get_run(season, weeks)
     run.run()
-
-    winners = run.get_winners()
-    su_winners = ', '.join(str(w) for w in winners[0])
-    ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
-    print(f"Winners are: SU  - {su_winners}\n"
-          f"             ATS - {ats_winners}")
-    run.print_results(PoolSeg.SU)
+    run.print_results_md(PoolSeg.SU)
+    pool.print_swami_bios_md()
 
     return 0
 

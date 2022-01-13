@@ -29,6 +29,7 @@ class Swami:
         class_name = swami_info.get('swami_class')
         module_path = swami_info.get('module_path')
         swami_params = swami_info.get('swami_params') or {}
+        swami_params['about_me'] = swami_info.get('about_me')
         if not class_name:
             raise ConfigError(f"`swami_class` not specified for swami '{swami_name}'")
         module = import_module(module_path)
@@ -48,6 +49,7 @@ class Swami:
         variables will be available for validation and/or additional configuration.
         """
         self.name = name
+        self.about_me = kwargs.get('about_me')
 
         my_class_name = type(self).__name__
         swami_classes = cfg.config('swami_classes')
