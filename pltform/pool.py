@@ -81,6 +81,7 @@ def compute_scores(game: Game, pick: Pick) -> Scores:
 # used in reporting
 SWAMI_COL = "Swami"
 TOTAL_COL = "Total"
+WIN_PCT   = "Win %"
 
 class PoolSeg(Enum):
     SU  = 0
@@ -227,32 +228,55 @@ class PoolRun:
                 print("\t".join(str(report_data.get(key)) for key in header), file=file)
 
     def season_report_hdr(self) -> list[str]:
+        """Header field names for the Season Report, which represent the keys for
+        the data returned by `season_report_iter()`.
+        """
         week_names = [WeekStr(w) for w in self.week_scores]
-        return [SWAMI_COL] + week_names + [TOTAL_COL]
+        return [SWAMI_COL] + week_names + [TOTAL_COL, WIN_PCT]
 
     def season_report_iter(self, pool_seg: PoolSeg) -> dict[str, int]:
+        """The Season Report shows the weekly results for each swami across all of
+        the weeks in the pool run.
+        """
         score_idx = pool_seg.value
         by_su = sorted(self.tot_scores.items(), key=lambda s: -s[1][0][0])
         for swami, tot_score in by_su:
             week_scores = self.swami_scores[swami]
             wins = {WeekStr(w): s[score_idx][0] for w, s in week_scores.items()}
             tot_wins = self.tot_scores[swami][score_idx][0]
-            yield {SWAMI_COL: swami.name} | wins | {TOTAL_COL: tot_wins}
+            tot_ties = self.tot_scores[swami][score_idx][2]
+            tot_picks = self.tot_scores[swami][score_idx].total()
+            win_pct = f"{(tot_wins + tot_ties / 2.0) / tot_picks * 100.0:.0f}%"
+            yield {SWAMI_COL: swami.name} | wins | {TOTAL_COL: tot_wins, WIN_PCT: win_pct}
 
     def week_report_hdr(self, week: int) -> list[str]:
+        """Header field names for the Week Report, which represent the keys for
+        the data returned by `season_report_iter()`.
+        """
         matchups = [g.matchup for g in self.week_games[week]]
         return [SWAMI_COL] + matchups
 
     def week_report_iter(self, week: int, pool_seg: PoolSeg) -> dict[str, int]:
+        """The Week Report shows all of the individual picks for each game by
+        all of the swamis in the pool.
+        """
         score_idx = pool_seg.value
         winner_row = {g.matchup: g.winner if not g.is_tie else "-tie-"
                       for g in self.week_games[week]}
         yield {SWAMI_COL: "Winner"} | winner_row
         winners = set(g.winner for g in self.week_games[week] if not g.is_tie)
+        winning_picks = Counter()
         for swami, game_picks in self.week_picks[week].items():
-            picks = {g.matchup: str(p.su_winner) + '*' if p.su_winner in winners else p.su_winner
-                     for g, p in game_picks.items()}
+            picks = {}
+            for g, p in game_picks.items():
+                win_ind = '*' if p.su_winner in winners else ''
+                picks[g.matchup] = p.su_winner.code + win_ind
+                winning_picks[g.matchup] += int(bool(win_ind))
             yield {SWAMI_COL: swami.name} | picks
+        nswamis = len(self.week_picks[week])
+        pick_pct = {key: f"{wins / nswamis * 100.0:.0f}%"
+                    for key, wins in winning_picks.items()}
+        yield {SWAMI_COL: WIN_PCT} | pick_pct
 
 ##############
 # PoolResult #
