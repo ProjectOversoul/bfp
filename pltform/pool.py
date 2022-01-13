@@ -87,6 +87,10 @@ class PoolSeg(Enum):
     SU  = 0
     ATS = 1
 
+def PoolSegStr(pool_seg: PoolSeg) -> str:
+    return {PoolSeg.SU:  "Straight Up",
+            PoolSeg.ATS: "Against the Spread"}[pool_seg]
+
 class PoolRun:
     """Run a pool for a specified timeframe (i.e. complete or partial season)
     """
@@ -245,7 +249,7 @@ class PoolRun:
         print(f"| SU | {su_winners} |", file=file)
         print(f"| ATS | {ats_winners} |", file=file)
 
-        print("\n## Season Summary ##")
+        print(f"\n## Season Summary ({PoolSegStr(pool_seg)}) ##")
         header = self.season_report_hdr()
         print("| ", " | ".join(header), " |", file=file)
         print("| ", " --- |" * len(header), file=file)
@@ -254,7 +258,7 @@ class PoolRun:
             print("| ", " | ".join(iter_data), " |", file=file)
 
         for week in self.week_scores:
-            print(f"\n### {WeekStr(week)} ###")
+            print(f"\n### {WeekStr(week)}  ({PoolSegStr(pool_seg)}) ###")
             header = self.week_report_hdr(week)
             print("| ", " | ".join(header), " |", file=file)
             print("| ", " --- |" * len(header), file=file)
