@@ -15,7 +15,7 @@ from .utils import parse_argv
 from .core import cfg, DataFile, log, ConfigError, DataError
 from .db_core import db
 from .team import TEAMS
-from .game import SPC_WEEK_MAP, WEEKDAY_MAP, Game
+from .game import PLAYOFF_WEEK_MAP, WEEKDAY_MAP, Game
 
 DATA_SRC_KEY = 'data_sources'
 PFR_SECT_KEY = 'pfr'
@@ -129,7 +129,7 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
     def week_conv(value: str) -> int:
         if value.isnumeric():
             return int(value)
-        if week_val := SPC_WEEK_MAP.get(value):
+        if week_val := PLAYOFF_WEEK_MAP.get(value):
             return week_val.value
         raise DataError(f"Unknown week value '{value}'")
 

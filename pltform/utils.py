@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from collections.abc import Iterable
-from typing import Union, Optional
-from numbers import Number
 import os.path
+from collections.abc import Iterable
+from numbers import Number
 
 import yaml
 
@@ -29,11 +28,11 @@ class Config:
       my_section:
         my_param: alt_value  # overwrites value from 'default' profile
     """
-    config_dir:   Optional[str]
+    config_dir:   str | None
     filepaths:    list[str]        # list of file pathnames loaded
     profile_data: dict[str, dict]  # config indexed by profile (including 'default')
 
-    def __init__(self, files: Union[str, Iterable[str]], config_dir: str = None):
+    def __init__(self, files: str | Iterable[str], config_dir: str = None):
         """Note that `files` can be specified as an iterable, or a comma-separated
         list of file names (no spaces)
         """
@@ -100,12 +99,12 @@ class Config:
 ########
 
 def parse_argv(argv: list[str]) -> tuple[list, dict]:
-    """Takes a list of arguments (typically a slice of sys.argv), which may be a
-    combination of bare agruments or kwargs-style constructions (e.g. "key=value")
+    """Takes a list of arguments (typically a slice of `sys.argv`), which may be a
+    combination of bare agruments or kwargs-style constructions (e.g. "key=value"),
     and returns a tuple of `args` and `kwargs`.  For both `args` and `kwargs`, we
     attempt to cast the value to the proper type (e.g. int, float, bool, or None).
     """
-    def typecast(val: str) -> Union[str, Number, bool, None]:
+    def typecast(val: str) -> str | Number | bool | None:
         if val.isdecimal():
             return int(val)
         if val.isnumeric():

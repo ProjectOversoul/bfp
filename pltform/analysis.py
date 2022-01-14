@@ -191,7 +191,7 @@ class _AnlyFilterRevChron(AnlyFilter):
 
 class _AnlyFilterSelf(AnlyFilter):
     """Filter specifying the target team scope, applied implicitly by the framework
-    if no other team scope filters have been applied
+    (if no other team scope filters have been applied).
     """
     type = FilterType.WHERE
 
@@ -243,14 +243,14 @@ class AnlyStats(NamedTuple):
         return len(self.losses) / len(self.games) * 100.0
 
     @property
-    def ats_pct(self) -> float:
+    def ats_win_pct(self) -> float:
         if not self.games:
             return -1.0
         return len(self.ats_wins) / len(self.games) * 100.0
 
     @property
     def pts_margin(self) -> float:
-        """Average points margin
+        """Average points margin for games evaluated
         """
         if not self.games:
             return -1.0
@@ -258,7 +258,7 @@ class AnlyStats(NamedTuple):
 
     @property
     def total_pts(self) -> float:
-        """Average points margin
+        """Average total points for games evaluated
         """
         if not self.games:
             return -1.0

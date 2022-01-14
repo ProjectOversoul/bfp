@@ -107,8 +107,8 @@ class PoolRun:
     def __init__(self, swamis: Iterable[Swami], season: int, weeks: Iterable[int] = None):
         """Run pool for the specified season, optionally narrowed to specific
         weeks within the season.  Note that special values for playoff weeks
-        are defined using the `game.Week` enum, and `game.PLAYOFF_WEEKS` may
-        be used to represent the set of all playoff weeks.
+        are defined using the `game.PlayoffWeek` enum, and `game.PLAYOFF_WEEKS`
+        may be used to represent the set of all playoff weeks.
         """
         if weeks is not None:
             weeks = list(weeks)
@@ -132,7 +132,7 @@ class PoolRun:
         su_wins, su_scores = next(groupby(by_su, key=lambda s: s[1][0][0]))
         ats_wins, ats_scores = next(groupby(by_ats, key=lambda s: s[1][1][0]))
         su_winner = [s[0] for s in su_scores]
-        ats_winner = [s[0] for s in ats_scores] if ats_wins > 0 else None
+        ats_winner = [s[0] for s in ats_scores] if ats_wins > 0 else [None]
         return su_winner, ats_winner
 
     def run(self) -> None:
@@ -220,29 +220,34 @@ class PoolRun:
         """
         winners = self.get_winners()
         su_winners = ', '.join(str(w) for w in winners[0])
-        ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
-        print(f"Winners are: SU  - {su_winners}\n"
-              f"             ATS - {ats_winners}", file=file)
+        ats_winners = ', '.join(str(w) for w in winners[1])
+        print("Winners:", file=file)
+        print("SU\t{su_winners}", file=file)
+        print("ATS\t{ats_winners}", file=file)
 
-        print("\nSeason Summary\n--------------")
+        title = f"Season Summary ({PoolSegStr(pool_seg)})"
+        print(f"\n{title}\n{'-' * len(title)}")
         header = self.season_report_hdr()
         print("\t".join(header), file=file)
         for report_data in self.season_report_iter(pool_seg):
-            print("\t".join(str(report_data.get(key)) for key in header), file=file)
+            iter_data = (str(report_data.get(key)) for key in header)
+            print("\t".join(iter_data), file=file)
 
         for week in self.week_scores:
-            print(f"\n{WeekStr(week)}\n{len(WeekStr(week)) * '-'}")
+            subtitle = f"{WeekStr(week)} ({PoolSegStr(pool_seg)})"
+            print(f"\n{subtitle}\n{len(subtitle) * '-'}")
             header = self.week_report_hdr(week)
             print("\t".join(header), file=file)
             for report_data in self.week_report_iter(week, pool_seg):
-                print("\t".join(str(report_data.get(key)) for key in header), file=file)
+                iter_data = (str(report_data.get(key)) for key in header)
+                print("\t".join(iter_data), file=file)
 
     def print_results_md(self, pool_seg: PoolSeg, file: TextIO = None) -> None:
         """Same as `print_results()` except in markdown format
         """
         winners = self.get_winners()
         su_winners = ', '.join(str(w) for w in winners[0])
-        ats_winners = ', '.join(str(w) for w in winners[1]) if winners[1] else winners[1]
+        ats_winners = ', '.join(str(w) for w in winners[1])
         print("\n## Winners ##")
         print("| Segment | Winner(s) |", file=file)
         print("| --- | --- |", file=file)
@@ -299,7 +304,8 @@ class PoolRun:
         """The Week Report shows all of the individual picks for each game by
         all of the swamis in the pool.
         """
-        score_idx = pool_seg.value
+        if pool_seg != PoolSeg.SU:
+            raise ImplementationError(f"Segment {pool_seg} not yet implemented")
         winner_row = {g.matchup: (g.winner if not g.is_tie else "-tie-") if g.winner else '-tbd-'
                       for g in self.week_games[week]}
         yield {SWAMI_COL: "Winner"} | winner_row

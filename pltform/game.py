@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from typing import Optional, NamedTuple
+from typing import NamedTuple
 from datetime import datetime
 from enum import Enum
 
@@ -11,38 +11,28 @@ from peewee import *
 from .db_core import BaseModel
 from .team import Team
 
-################
-# Week/WeekDay #
-################
+######################
+# Week-related stuff #
+######################
 
-# values less than 100 represent the week number within the
-# season; playoff games have special values as specified in
-# the `Week` enum
-Weak = int
+# values less than 100 represent the week number within the season
+# (1 through <n>); playoff games have special values as specified
+# in the `PlayoffWeek` enum
+Week = int
 
-# special values
-class Week(Enum):
+# special playoff values
+class PlayoffWeek(Enum):
     WC   = 100
     DIV  = 200
     CONF = 300
     SB   = 400
 
-SPC_WEEK_MAP = {'WildCard':  Week.WC,
-                'Division':  Week.DIV,
-                'ConfChamp': Week.CONF,
-                'SuperBowl': Week.SB}
+PLAYOFF_WEEK_MAP = {'WildCard':  PlayoffWeek.WC,
+                    'Division':  PlayoffWeek.DIV,
+                    'ConfChamp': PlayoffWeek.CONF,
+                    'SuperBowl': PlayoffWeek.SB}
 
-PLAYOFF_WEEKS = (w.value for w in Week)
-
-PLAYOFF_WEEK_STR = {100: 'WildCard',
-                    200: 'Division',
-                    300: 'ConfChamp',
-                    400: 'SuperBowl'}
-
-def WeekStr(week: int) -> str:
-    if week >= 100:
-        return PLAYOFF_WEEK_STR[week]
-    return f"Week {week}"
+PLAYOFF_WEEKS = (w.value for w in PlayoffWeek)
 
 # values consistent with `datetime.weekday()`
 class WeekDay(Enum):
@@ -61,6 +51,18 @@ WEEKDAY_MAP = {'Mon': WeekDay.MON,
                'Fri': WeekDay.FRI,
                'Sat': WeekDay.SAT,
                'Sun': WeekDay.SUN}
+
+def WeekStr(week: int) -> str:
+    """Return a human-readable string representing the week "number" that is
+    passed in (which includes special values defined by `PlayoffWeek`), used
+    for reporting.
+    """
+    if week >= 100:
+        return {100: 'WildCard',
+                200: 'Division',
+                300: 'ConfChamp',
+                400: 'SuperBowl'}[week]
+    return f"Week {week}"
 
 ########
 # Pick #
@@ -82,13 +84,13 @@ class Pick(NamedTuple):
 class GameInfo(NamedTuple):
     game_id:    int
     season:     int    # year of season start
-    week:       int    # ordinal within season, or special `Week` value
+    week:       Week   # ordinal within season, or special `PlayoffWeek` value
     day:        WeekDay
     datetime:   datetime
     home_team:  Team
     away_team:  Team
-    pt_spread:  Optional[float]  # "pick" is represented by 0.0
-    over_under: Optional[float]
+    pt_spread:  float | None  # "pick" is represented by 0.0
+    over_under: float | None
 
 ###############
 # GameResults #
@@ -102,9 +104,9 @@ class GameResults(NamedTuple):
     loser_pts:      int
     pts_margin:     int
     total_pts:      int
-    home_vs_spread: Optional[float]
-    away_vs_spread: Optional[float]
-    vs_over_under:  Optional[float]
+    home_vs_spread: float | None
+    away_vs_spread: float | None
+    vs_over_under:  float | None
 
 ########
 # Game #
@@ -119,7 +121,7 @@ class Game(BaseModel):
     # context/schedule info
     game_id      = AutoField()
     season       = IntegerField()  # year of season start
-    week         = IntegerField()  # ordinal within season, or special `Week` value
+    week         = IntegerField()  # ordinal within season, or special `PlayoffWeek` value
     day          = IntegerField()  # day of week 0-6 (Mon-Sun)
     datetime     = DateTimeField()
     home_team    = ForeignKeyField(Team, column_name='home_team', backref='home_games')
@@ -240,9 +242,9 @@ variables needed to implement certain functions that can operate on either
 robust fashion, since `NamedTuple` doesn't support multiple inheritence.
 
 The required context variables are as follows:
-  game_id:    int | IntegerField
-  season:     int | IntegerField
-  week:       int | IntegerField
+  game_id:    int  | IntegerField
+  season:     int  | IntegerField
+  week:       Week | IntegerField
   datetime:   datetime
   home_team:  Team
   away_team:  Team

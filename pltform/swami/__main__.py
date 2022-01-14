@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from pprint import pformat
 
 from ..game import Game
 from . import Swami
@@ -23,9 +24,10 @@ def main() -> int:
     info = game.get_info()
     results = game.get_results()
 
-    print(f"{info}")
+    pp_params = {'sort_dicts': False}
+    print("Game Info:\n", pformat(info._asdict(), **pp_params))
     print(f"\nYour pick: {team} by {margin}")
-    print(f"\n{results}")
+    print("\nResults:\n", pformat(results._asdict(), **pp_params))
 
     outcome = ("wrong", "right")
     print(f"\nYou were {outcome[int(team == results.winner)]}!")

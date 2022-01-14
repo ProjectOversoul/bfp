@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from typing import Optional, NamedTuple
+from typing import NamedTuple
 
 from peewee import *
 
@@ -35,7 +35,7 @@ class TeamData(NamedTuple):
     conf:      str
     div:       str
     pfr_code:  str
-    timezone:  Optional[str]
+    timezone:  str | None
 
 class Team(BaseModel):
     """Represents a currently active team; note that data for prior incarnations
