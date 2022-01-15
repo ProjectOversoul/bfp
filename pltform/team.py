@@ -44,7 +44,7 @@ class Team(BaseModel):
     or not one agrees, cf. Browns->Ravens)
     """
     code      = TextField(primary_key=True)
-    name      = TextField()
+    name      = TextField(unique=True)
     full_name = TextField()
     conf      = TextField()
     div       = TextField()

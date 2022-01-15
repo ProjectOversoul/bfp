@@ -46,10 +46,7 @@ class Score(Counter):
 Swamis        = list[Swami]
 Scores        = list[Score]       # [su_score, ats_score]
 GamePick      = dict[Game, Pick]
-SwamiPick     = dict[Swami, Pick]
-SwamiGamePick = dict[Swami, GamePick]
 WeekScores    = dict[int, Scores]
-SwamiScores   = dict[Swami, Scores]
 
 def compute_scores(game: Game, pick: Pick) -> Scores:
     """Return SU and ATS score tuples for an individual  pick against a game
@@ -98,11 +95,11 @@ class PoolRun:
     season:       int
     weeks:        list[int] | None
     week_games:   dict[int, list[Game]]
-    game_picks:   dict[Game, SwamiPick]
-    week_picks:   dict[int, SwamiGamePick]
-    week_scores:  dict[int, SwamiScores]
+    game_picks:   dict[Game, dict[Swami, Pick]]
+    week_picks:   dict[int, dict[Swami, GamePick]]
+    week_scores:  dict[int, dict[Swami, Scores]]
     swami_scores: dict[Swami, WeekScores]
-    tot_scores:   SwamiScores
+    tot_scores:   dict[Swami, Scores]
 
     def __init__(self, swamis: Iterable[Swami], season: int, weeks: Iterable[int] = None):
         """Run pool for the specified season, optionally narrowed to specific
@@ -124,6 +121,11 @@ class PoolRun:
 
     def get_winners(self) -> tuple[Swamis, Swamis | None]:
         """Not a pretty way to do this, but oh well...
+
+        Note that we always return a list of `Swami`s for each segment, even in
+        the case of single winners, to keep the interface simpler; it is up to
+        the caller (typically some output/reporting mechanism) to "un-list" it
+        in rendering.
         """
         if not self.tot_scores:
             raise LogicError("Results yet not computed")

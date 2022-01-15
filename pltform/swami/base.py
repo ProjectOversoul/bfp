@@ -1,17 +1,55 @@
 # -*- coding: utf-8 -*-
 
 from os import environ
+from enum import Enum
 from importlib import import_module
 
+from peewee import *
+
+from ..db_core import BaseModel
 from ..core import cfg, ConfigError, ImplementationError
-from ..game import GameInfo, Pick
+from ..team import Team
+from ..game import Game, GameInfo, Pick
 
 SWAMI_CONFIG = environ.get('BFP_SWAMI_CONFIG') or 'swamis.yml'
 cfg.load(SWAMI_CONFIG)
 
+#############
+# SwamiType #
+#############
+
+class SwamiType(Enum):
+    """The value portion of this enum is part of the `SwamiRoster` record
+    """
+    CYBER = 'cyber'
+    DATA  = 'data'
+    HUMAN = 'human'
+
+###############
+# SwamiRoster #
+###############
+
+class SwamiRoster(BaseModel):
+    """List of registered `Swami`s, with type and class information.  Note
+    that `swami_type` is currently just informational (not needed for class
+    instantiation), though a future can be imagined where it may be useful.
+    """
+    name         = TextField(primary_key=True)
+    swami_type   = TextField()
+    module_path  = TextField()
+    swami_class  = TextField()
+    swami_params = TextField()  # encoded as json
+
+#########
+# Swami #
+#########
+
 class Swami:
     """Abstract base class for football swami; each subclass is an implementation
     of football prediction algorithms, which are configurable via parameters.
+
+    TODO: convert this into a persistent model object (derived from `BaseModel`),
+    to support `SwamiPicks` for "data" and "human" swami types!!!
     """
     name:     str
     about_me: str
@@ -76,3 +114,18 @@ class Swami:
         :return: predicted winning team and margin of victory
         """
         raise ImplementationError("Subclasses must override this method")
+
+#############
+# SwamiPick #
+#############
+
+class SwamiPick(BaseModel):
+    """
+    """
+    swami:      ForeignKeyField(Swami)
+    game:       ForeignKeyField(Game)
+    su_winner:  ForeignKeyField(Team, backref='su_picks')
+    ats_winner: ForeignKeyField(Team, backref='ats_picks', null=True)
+    pts_margin: IntegerField()   # from winner POV (i.e. must be greater than 0)
+    total_pts:  IntegerField()
+    pick_ts:    DateTimeField()  # timestamp for the pick itself

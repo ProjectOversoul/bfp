@@ -112,8 +112,6 @@ class GameResults(NamedTuple):
 # Game #
 ########
 
-PICK_STR = 'pick'  # meaning "pick'em", not related to `Pick` class
-
 class Game(BaseModel):
     """Represents a single game played or scheduled (`datetime` is the future and
     `winner`, `loser`, etc. fields are null)
@@ -129,7 +127,7 @@ class Game(BaseModel):
     boxscore_url = TextField()
 
     # enrichment info
-    pt_spread    = FloatField(null=True)  # negative - home favorite, 0 - pick
+    pt_spread    = FloatField(null=True)  # negative - home favorite, 0 - pick'em
     over_under   = FloatField(null=True)
 
     # result/outcome info
@@ -144,6 +142,12 @@ class Game(BaseModel):
     away_pts     = IntegerField(null=True)
     away_yds     = IntegerField(null=True)
     away_tos     = IntegerField(null=True)
+
+    class Meta:
+        indexes = (
+            # make sure games are not double-loaded
+            (('season', 'week', 'home_team', 'away_team'), True)
+        )
 
     @property
     def matchup(self) -> str:
