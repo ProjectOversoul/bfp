@@ -291,7 +291,7 @@ class PoolRun:
             wins = {WeekStr(w): s[score_idx][0] for w, s in week_scores.items()}
             tot_wins = self.tot_scores[swami][score_idx][0]
             tot_ties = self.tot_scores[swami][score_idx][2]
-            tot_picks = self.tot_scores[swami][score_idx].total()
+            tot_picks = self.tot_scores[swami][score_idx].total() or -1
             win_pct = f"{(tot_wins + tot_ties / 2.0) / tot_picks * 100.0:.0f}%"
             yield {SWAMI_COL: swami.name} | wins | {TOTAL_COL: tot_wins, WIN_PCT: win_pct}
 
@@ -364,7 +364,7 @@ class Pool:
         # idx is used below as a count of the inbound swamis
         for idx, swami in enumerate(swamis):
             if isinstance(swami, str):
-                swami = Swami.new(swami)
+                swami = Swami.get_by_name(swami)
             self.swamis[swami.name] = swami
         if len(self.swamis) < 1:
             raise RuntimeError("At least one swami must be specified")

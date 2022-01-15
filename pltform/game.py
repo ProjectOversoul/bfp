@@ -5,6 +5,7 @@ import sys
 from typing import NamedTuple
 from datetime import datetime
 from enum import Enum
+from pprint import pformat
 
 from peewee import *
 
@@ -260,7 +261,16 @@ GameCtx = GameInfo | Game
 ########
 
 def main() -> int:
-    pass
+    """Get game by primary key
+
+    Usage: game.py <game_id>
+    """
+    game_id = int(sys.argv[1])
+    game = Game.get_by_id(game_id)
+
+    pp_params = {'sort_dicts': False}
+    print(pformat(game.__data__, **pp_params))
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main())

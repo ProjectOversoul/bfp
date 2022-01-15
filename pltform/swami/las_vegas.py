@@ -10,7 +10,7 @@ class SwamiLasVegas(SwamiExt):
     name = "Las Vegas"
     desc = "History of predictions based on Las Vegas odds"
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         pass
 
     def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:

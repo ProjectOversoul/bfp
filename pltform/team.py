@@ -7,8 +7,8 @@ from typing import NamedTuple
 from peewee import *
 
 from .utils import parse_argv
-from .db_core import db, BaseModel
 from .core import cfg, ConfigError
+from .db_core import db, BaseModel
 
 #################
 # Team metadata #

@@ -3,6 +3,7 @@
 from os import environ
 from enum import Enum
 from importlib import import_module
+import json
 
 from peewee import *
 
@@ -19,55 +20,49 @@ cfg.load(SWAMI_CONFIG)
 #############
 
 class SwamiType(Enum):
-    """The value portion of this enum is part of the `SwamiRoster` record
+    """This is used primarily for documentation and reporting, not currently
+    needed for instatiation or runtime logic
     """
     CYBER = 'cyber'
     DATA  = 'data'
     HUMAN = 'human'
 
-###############
-# SwamiRoster #
-###############
-
-class SwamiRoster(BaseModel):
-    """List of registered `Swami`s, with type and class information.  Note
-    that `swami_type` is currently just informational (not needed for class
-    instantiation), though a future can be imagined where it may be useful.
-    """
-    name         = TextField(primary_key=True)
-    swami_type   = TextField()
-    module_path  = TextField()
-    swami_class  = TextField()
-    swami_params = TextField()  # encoded as json
-
 #########
 # Swami #
 #########
 
-class Swami:
+SWAMI_TABLE = 'swami'
+
+def swami_table(model_class):
+    return SWAMI_TABLE
+
+class Swami(BaseModel):
     """Abstract base class for football swami; each subclass is an implementation
     of football prediction algorithms, which are configurable via parameters.
 
-    TODO: convert this into a persistent model object (derived from `BaseModel`),
+    Note that `swami_type` is currently just informational (not needed for class
+    instantiation), though a future can be imagined where it may be useful.
     to support `SwamiPicks` for "data" and "human" swami types!!!
     """
-    name:     str
-    about_me: str
+    swami_id     = AutoField()
+    name         = TextField(unique=True)
+    about_me     = TextField(null=True)
+    swami_type   = TextField(null=True)
+    module_path  = TextField(null=True)
+    swami_class  = TextField(null=True)
+    swami_params = TextField(null=True)  # json representation of subclass instance vars
     
+    class Meta:
+        table_function = swami_table
+
     @classmethod
-    def new(cls, swami_name: str, **kwargs: int) -> 'Swami':
-        """Return instantiated `Swami` object based on configured swami, identified
-        by name; note that the named swami entry may override base parameter values
-        specified for the underlying implementation class.
-        """
+    def get_class(cls, swami_name: str) -> type:
         swamis = cfg.config('swamis')
         if swami_name not in swamis:
             raise RuntimeError(f"Swami '{swami_name}' is not known")
         swami_info = swamis[swami_name]
         class_name = swami_info.get('swami_class')
         module_path = swami_info.get('module_path')
-        swami_params = swami_info.get('swami_params') or {}
-        swami_params['about_me'] = swami_info.get('about_me')
         if not class_name:
             raise ConfigError(f"`swami_class` not specified for swami '{swami_name}'")
         module = import_module(module_path)
@@ -75,10 +70,39 @@ class Swami:
         if not issubclass(swami_class, cls):
             raise ConfigError(f"`{swami_class.__name__}` not subclass of `{cls.__name__}`")
 
-        swami_params.update(kwargs)
-        return swami_class(swami_name, **swami_params)
+        return swami_class
 
-    def __init__(self, name: str, **kwargs: int):
+    @classmethod
+    def get_class_info(cls) -> dict:
+        my_class_name = cls.__name__
+        swami_classes = cfg.config('swami_classes')
+        if my_class_name not in swami_classes:
+            raise ConfigError(f"Swami class `{my_class_name}` is not known")
+        return swami_classes[my_class_name]
+
+    @classmethod
+    def my_create(cls, **kwargs) -> 'Swami':
+        """Return instantiated `Swami` object based on configured swami, identified
+        by name; note that the named swami entry may override base parameter values
+        specified for the underlying implementation class.
+        """
+        if 'name' not in kwargs:
+            raise RuntimeError("`name` must be specified")
+        swami_class = cls.get_class(kwargs['name'])
+        class_info = swami_class.get_class_info()
+        kwargs['swami_type'] = class_info.get('swami_type')
+        return swami_class.create(**kwargs)
+
+    @classmethod
+    def get_by_name(cls, swami_name: str) -> 'Swami':
+        """Return instantiated `Swami` object based on configured swami, identified
+        by name; note that the named swami entry may override base parameter values
+        specified for the underlying implementation class.
+        """
+        swami_class = cls.get_class(swami_name)
+        return swami_class.get(swami_class.name == swami_name)
+
+    def __init__(self, **kwargs):
         """Set parameter values as instance variables.  Note that param values may
         be defined in the `swami_classes` configuration, specified in the `swamis`
         entry, or overridden at instantiation time (see `new()`).
@@ -86,20 +110,17 @@ class Swami:
         Subclasses must invoke this base class constructor first, so that instance
         variables will be available for validation and/or additional configuration.
         """
-        self.name = name
-        self.about_me = kwargs.get('about_me')
+        super().__init__(**kwargs)
+        params = json.loads(self.swami_params) if self.swami_params else {}
 
-        my_class_name = type(self).__name__
-        swami_classes = cfg.config('swami_classes')
-        if my_class_name not in swami_classes:
-            raise ConfigError(f"Swami class `{my_class_name}` is not known")
-
-        base_params = swami_classes[my_class_name].get('class_params')
+        class_info = self.__class__.get_class_info()
+        base_params = class_info.get('class_params')
         if not base_params:
-            raise ConfigError(f"`class_params` missing for swami class `{my_class_name}`")
+            class_name = self.__class__.__name__
+            raise ConfigError(f"`class_params` missing for swami class `{class_name}`")
         for key, base_value in base_params.items():
-            # note that empty values in kwargs should override base values
-            setattr(self, key, kwargs[key] if key in kwargs else base_value)
+            # note that empty values in `params` should override base values
+            setattr(self, key, params[key] if key in params else base_value)
 
     def __str__(self) -> str:
         return self.name
@@ -120,7 +141,7 @@ class Swami:
 #############
 
 class SwamiPick(BaseModel):
-    """
+    """Represents both current and historical picks for all swami types
     """
     swami:      ForeignKeyField(Swami)
     game:       ForeignKeyField(Game)

@@ -6,6 +6,7 @@ from .utils import parse_argv
 from .db_core import db, BaseModel
 from .team import Team
 from .game import Game
+from .swami import Swami, SwamiPick
 
 ##########
 # Schema #

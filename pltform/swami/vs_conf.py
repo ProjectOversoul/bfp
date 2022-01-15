@@ -11,8 +11,8 @@ class SwamiVsConf(Swami):
     num_games:   int
     num_seasons: int
 
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         if not self.num_games and not self.num_seasons:
             raise RuntimeError("Either `num_games` or `num_seasons` must be specified")
 

@@ -29,3 +29,4 @@ db = SqliteDatabase(DataFile(db_file), pragmas)
 class BaseModel(Model):
     class Meta:
         database = db
+        legacy_table_names = False

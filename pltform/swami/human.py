@@ -7,8 +7,8 @@ from .base import Swami
 class SwamiHuman(Swami):
     """Human swami, with picks coming from interactive web-app
     """
-    def __init__(self):
-        pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def pick_winner(self, game_info: GameInfo) -> tuple[Team, int]:
         """Implement algoritm to pick winner of games

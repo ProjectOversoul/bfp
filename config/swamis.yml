@@ -4,24 +4,36 @@ default:
   # indicated here will serve as default values, which may then be overridden
   # configured swamis below
   swami_classes:
+    SwamiHuman:
+      swami_type:    human
+      class_params:
     SwamiVsAll:
+      swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
     SwamiVsTeam:
+      swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
     SwamiVsDiv:
+      swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
     SwamiVsConf:
+      swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
 
   swamis:
+    default:
+      about_me:
+      module_path:   pltform.swami
+      swami_class:   SwamiHuman
+      swami_params:
     Rudi 1:
       about_me:      "Pick based on last game played"
       module_path:   pltform.swami
