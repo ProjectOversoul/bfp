@@ -57,6 +57,8 @@ class Swami(BaseModel):
 
     @classmethod
     def get_class(cls, swami_name: str) -> type:
+        """Return the subclass configured for the specified swami (by name)
+        """
         swamis = cfg.config('swamis')
         if swami_name not in swamis:
             raise RuntimeError(f"Swami '{swami_name}' is not known")
@@ -74,6 +76,8 @@ class Swami(BaseModel):
 
     @classmethod
     def get_class_info(cls) -> dict:
+        """Return configuration information (metadata) for the class
+        """
         my_class_name = cls.__name__
         swami_classes = cfg.config('swami_classes')
         if my_class_name not in swami_classes:
@@ -81,26 +85,18 @@ class Swami(BaseModel):
         return swami_classes[my_class_name]
 
     @classmethod
-    def my_create(cls, **kwargs) -> 'Swami':
-        """Return instantiated `Swami` object based on configured swami, identified
-        by name; note that the named swami entry may override base parameter values
-        specified for the underlying implementation class.
+    def get_by_name(cls, swami_name: str) -> 'Swami':
+        """Convenience method for retrieving swami by name.
+        """
+        return cls.get(cls.name == swami_name)
+
+    def __new__(cls, **kwargs):
+        """Instantiate the proper subclass, based on config file specification
         """
         if 'name' not in kwargs:
             raise RuntimeError("`name` must be specified")
         swami_class = cls.get_class(kwargs['name'])
-        class_info = swami_class.get_class_info()
-        kwargs['swami_type'] = class_info.get('swami_type')
-        return swami_class.create(**kwargs)
-
-    @classmethod
-    def get_by_name(cls, swami_name: str) -> 'Swami':
-        """Return instantiated `Swami` object based on configured swami, identified
-        by name; note that the named swami entry may override base parameter values
-        specified for the underlying implementation class.
-        """
-        swami_class = cls.get_class(swami_name)
-        return swami_class.get(swami_class.name == swami_name)
+        return super().__new__(swami_class)
 
     def __init__(self, **kwargs):
         """Set parameter values as instance variables.  Note that param values may

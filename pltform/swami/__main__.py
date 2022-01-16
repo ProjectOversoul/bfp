@@ -31,7 +31,7 @@ def load_data() -> int:
             if info.get('swami_params'):
                 info['swami_params'] = json.dumps(info['swami_params'])
             print(f"Loading swami '{name}'")
-            Swami.my_create(**info)
+            Swami.create(**info)
             nswamis += 1
 
     print(f"{nswamis} swamis loaded")
