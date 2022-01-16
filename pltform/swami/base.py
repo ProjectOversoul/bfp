@@ -23,9 +23,9 @@ class SwamiType(Enum):
     """This is used primarily for documentation and reporting, not currently
     needed for instatiation or runtime logic
     """
-    CYBER = 'cyber'
-    DATA  = 'data'
-    HUMAN = 'human'
+    CYBER    = 'cyber'
+    EXT_DATA = 'ext data'
+    INTERACT = 'interact'
 
 #########
 # Swami #
@@ -42,7 +42,7 @@ class Swami(BaseModel):
 
     Note that `swami_type` is currently just informational (not needed for class
     instantiation), though a future can be imagined where it may be useful.
-    to support `SwamiPicks` for "data" and "human" swami types!!!
+    to support `SwamiPicks` for "ext data" and "interactive" swami types!!!
     """
     swami_id     = AutoField()
     name         = TextField(unique=True)
@@ -86,7 +86,7 @@ class Swami(BaseModel):
 
     @classmethod
     def get_by_name(cls, swami_name: str) -> 'Swami':
-        """Convenience method for retrieving swami by name.
+        """Convenience method for retrieving swami by name
         """
         return cls.get(cls.name == swami_name)
 

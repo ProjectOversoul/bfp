@@ -49,6 +49,9 @@ class AnlyFilter:
     def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
         raise ImplementationError("Must be implemented by subclass")
 
+# "abstract" filter represents both filter specification variants
+AbstrAnlyFilter = AnlyFilter | dict[Team, AnlyFilter]
+
 class AnlyFilterVenue(AnlyFilter):
     """Filter specifying home vs. away games to evaluate
     """
@@ -218,6 +221,11 @@ class StatsCounter(Counter):
         super().__init__({0: pts, 1: yds, 2: tos})
 
 class AnlyStats(NamedTuple):
+    """Note that we record `games`, `wins`, `losses`, etc. as lists of
+    games (rather than just the count), so the underlying detail-level
+    information is readily available to the analysis class.  The count
+    for each type of result is available as a property
+    """
     games:       list[Game]
     wins:        list[Game]
     losses:      list[Game]
@@ -229,6 +237,26 @@ class AnlyStats(NamedTuple):
     yds_against: int
     tos_for:     int
     tos_against: int
+
+    @property
+    def num_games(self) -> int:
+        return len(self.games)
+
+    @property
+    def num_wins(self) -> int:
+        return len(self.wins)
+
+    @property
+    def num_losses(self) -> int:
+        return len(self.losses)
+
+    @property
+    def num_ties(self) -> int:
+        return len(self.ties)
+
+    @property
+    def num_ats_wins(self) -> int:
+        return len(self.ats_wins)
 
     @property
     def win_pct(self) -> float:
@@ -264,6 +292,38 @@ class AnlyStats(NamedTuple):
             return -1.0
         return (self.pts_for + self.pts_against) / len(self.games)
 
+    @property
+    def yds_margin(self) -> float:
+        """Average yards margin for games evaluated
+        """
+        if not self.games:
+            return -1.0
+        return (self.yds_for - self.yds_against) / len(self.games)
+
+    @property
+    def total_yds(self) -> float:
+        """Average total yards for games evaluated
+        """
+        if not self.games:
+            return -1.0
+        return (self.yds_for + self.yds_against) / len(self.games)
+
+    @property
+    def tos_margin(self) -> float:
+        """Average turnover margin for games evaluated
+        """
+        if not self.games:
+            return -1.0
+        return (self.tos_for - self.tos_against) / len(self.games)
+
+    @property
+    def total_tos(self) -> float:
+        """Average total turnovers for games evaluated
+        """
+        if not self.games:
+            return -1.0
+        return (self.tos_for + self.tos_against) / len(self.games)
+
 ############
 # Analysis #
 ############
@@ -287,12 +347,11 @@ class Analysis:
     team_stats:   dict[Team, AnlyStats | None]
     frozen:       bool
 
-    def __init__(self, game_ctx: GameCtx, filters: list[AnlyFilter] = None):
-        filters = filters or []
+    def __init__(self, game_ctx: GameCtx):
         teams   = (game_ctx.home_team, game_ctx.away_team)
 
         self.game_ctx     = game_ctx
-        self.team_filters = {t: filters.copy() for t in teams}
+        self.team_filters = {t: [] for t in teams}
         self.team_stats   = {t: None for t in teams}
         self.frozen       = False
 
@@ -300,10 +359,12 @@ class Analysis:
         self.add_filter(_AnlyFilterTimeframe())
         self.add_filter(_AnlyFilterRevChron())
 
-    def add_filter(self, filter: AnlyFilter) -> None:
+    def add_filter(self, filter: AbstrAnlyFilter) -> None:
         """Add the same filter to the analysis for both teams in the game
         context
         """
+        if isinstance(filter, dict):
+            return self.add_filters(filter)
         if self.frozen and type(filter) not in FRAMEWORK_FILTERS:
             raise LogicError("Cannot add filters after analysis is frozen")
         for team in self.team_filters:

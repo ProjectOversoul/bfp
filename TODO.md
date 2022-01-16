@@ -11,7 +11,7 @@
 - Simple UI for running and reporting on pools/runs
 - Documentation for extending base data and models
   - Games (more stats)
-  - Teams (stats, matchups, injuries, etc.)
+  - Teams (standings, stats, matchups, injuries, etc.)
   - Players (stats, matchups, plus-minus)
 - Documentation for extending analysis class/framework
 

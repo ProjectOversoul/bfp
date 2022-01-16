@@ -5,28 +5,32 @@ default:
   # configured swamis below
   swami_classes:
     SwamiHuman:
-      swami_type:    human
+      swami_type:    interact
       class_params:
     SwamiVsAll:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        criteria:    [wins, pts, yds]
     SwamiVsTeam:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        criteria:    [wins, pts, yds]
     SwamiVsDiv:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        criteria:    [wins, pts, yds]
     SwamiVsConf:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        criteria:    [wins, pts, yds]
 
   swamis:
     default:
