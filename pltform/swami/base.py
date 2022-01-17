@@ -23,9 +23,9 @@ class SwamiType(Enum):
     """This is used primarily for documentation and reporting, not currently
     needed for instatiation or runtime logic
     """
-    CYBER    = 'cyber'
-    EXT_DATA = 'ext data'
-    INTERACT = 'interact'
+    CYBER    = 'Cyber'
+    EXT_DATA = 'External Data'
+    INTERACT = 'Interactive'
 
 #########
 # Swami #

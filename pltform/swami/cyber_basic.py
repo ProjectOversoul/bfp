@@ -5,19 +5,22 @@ from ..game import GameInfo, Pick
 from ..analysis import Analysis, AbstrAnlyFilter, AnlyFilterSeasons, AnlyFilterGames
 from .base import Swami
 
-class SwamiCyber(Swami):
-    """Base processing for Cyber Swamis
+class SwamiCyberBasic(Swami):
+    """Cyber Swami abstract class based on basic `Analysis` class (and `AnlyFilter`s)
+    and configuration parameters for games/seasons, and selection "criteria".
     """
     num_games:   int
     num_seasons: int
     criteria:    list[str]  # see `CRIT_MAP` for valid values
 
-    CRIT_MAP = {'games':    'num_games',
-                'wins':     'num_wins',
-                'ats_wins': 'num_ats_wins',
-                'pts':      'pts_margin',
-                'yds':      'yds_margin',
-                'tos':      'tos_margin'}
+    CRIT_MAP = {'games':       'num_games',
+                'wins':        'num_wins',
+                'win_pct':     'win_pct',
+                'ats_wins':    'num_ats_wins',
+                'ats_win_pct': 'ats_win_pct',
+                'pts':         'pts_margin',
+                'yds':         'yds_margin',
+                'tos':         'tos_margin'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,11 +31,12 @@ class SwamiCyber(Swami):
                 raise ConfigError(f"Invalid criterion '{crit}' in `criteria`")
 
     def cyber_pick(self, game_info: GameInfo, filters: list[AbstrAnlyFilter] = None) -> Pick:
-        """Common pick logic for Cyber Swamis.  Applies the logic for number of games
-        and/or seasons, as well as the selection `criteria`.
+        """Common pick logic for CyberBasic Swamis.  Applies the logic for configured
+        number of games or seasons, as well as selection `criteria`.
 
         :param game_info: passed through from `get_pick()`
         :param filters: subclass-specific filters (applied on top of common logic)
+        :return: pick based on first criterion to resolve
         """
         addl_filters = filters or []
         if self.num_seasons:
@@ -69,6 +73,3 @@ class SwamiCyber(Swami):
             margin = home_stats.pts_margin
 
         return Pick(winner, None, max(round(margin), 1), round(total_pts))
-
-    def get_pick(self, game_info: GameInfo) -> Pick:
-        raise ImplementationError("Cyber subclass must override this method")

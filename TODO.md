@@ -6,13 +6,17 @@
   - Pool results aggregation
 - Add additional data source(s) for points spreads and over/under numbers
   - Implement SwamiLasVegas based on the odds data
-- Implement swamis based on external prediction platforms (e.g. 538.com)
-- Automated loading of base data (from pro-football-reference.com)
-- Simple UI for running and reporting on pools/runs
+- Implement SwamiFiveThirtyEight as an example of External Data swami implementation
+- Cleanup and unify console scripts for consistent operation of the platform
+  - data_mgr tool
+  - pool_mgr tool
+  - swami_mgr tool
+- Automated loading of base data (from PFR and odds data source)
+- Simple GUI for running and reporting on pools/runs
 - Documentation for extending base data and models
   - Games (more stats)
-  - Teams (standings, stats, matchups, injuries, etc.)
-  - Players (stats, matchups, plus-minus)
+  - Teams (standings, stats, rosters, team matchups, etc.)
+  - Players (stats, player matchups, plus-minus, injuries, etc.)
 - Documentation for extending analysis class/framework
 
 #### Future Enhancements ####

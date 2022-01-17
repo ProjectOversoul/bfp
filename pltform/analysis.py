@@ -49,7 +49,9 @@ class AnlyFilter:
     def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
         raise ImplementationError("Must be implemented by subclass")
 
-# "abstract" filter represents both filter specification variants
+# "abstract filter" represents both variants of a filter specification--either a
+# single filter to be applied to both teams; or a map of filters, indexed by team,
+# to be applied selectively
 AbstrAnlyFilter = AnlyFilter | dict[Team, AnlyFilter]
 
 class AnlyFilterVenue(AnlyFilter):
@@ -116,6 +118,53 @@ class AnlyFilterConf(AnlyFilter):
                        ((Game.away_team == str(my_team)) &
                         (HomeTeam.conf == self.conf))))
 
+class AnlyFilterWeeks(AnlyFilter):
+    """Filter specifying which weeks within the season to evaluate
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterDayOfWeek(AnlyFilter):
+    """Filter specifying which day(s) of the week for games to evaluate
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterRecord(AnlyFilter):
+    """Filter specifying the current/opponent team point-in-time season records
+    for games to evaluate
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterRanking(AnlyFilter):
+    """Filter specifying the current/opponent team point-in-time season ranking
+    (e.g. total offense/defense) for games to evaluate
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterSpread(AnlyFilter):
+    """Filter specifying the points spread (relative to current team) for games
+    to evaluate
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterOutcome(AnlyFilter):
+    """Filter specifying outcome of the games to evaluate (i.e. win, loss, or tie
+    by the target team)
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
+class AnlyFilterStatMargin(AnlyFilter):
+    """Filter specifying a stats margin for games to consider (e.g. "games won by
+    less than 7 points")
+    """
+    def __init__(self):
+        raise ImplementationError("Not yet implemented")
+
 class AnlyFilterGames(AnlyFilter):
     """Filter specifying number of qualifying games to evaluate
     """
@@ -147,26 +196,6 @@ class AnlyFilterSeasons(AnlyFilter):
         end = ctx.season
         start = end - self.seasons + 1
         return query.where(Game.season.between(start, end))
-
-class AnlyFilterWeeks(AnlyFilter):
-    """Filter specifying which weeks within the season to evaluate
-    """
-    def __init__(self):
-        raise ImplementationError("Not yet implemented")
-
-class AnlyFilterRecord(AnlyFilter):
-    """Filter specifying the current/opponent team point-in-time season
-    records for games to evaluate
-    """
-    def __init__(self):
-        raise ImplementationError("Not yet implemented")
-
-class AnlyFilterSpread(AnlyFilter):
-    """Filter specifying the spread (relative to current team) for games
-    to evaluate
-    """
-    def __init__(self):
-        raise ImplementationError("Not yet implemented")
 
 class _AnlyFilterTimeframe(AnlyFilter):
     """Filter specifying the timeframe for the analysis (games considered must be
@@ -221,10 +250,10 @@ class StatsCounter(Counter):
         super().__init__({0: pts, 1: yds, 2: tos})
 
 class AnlyStats(NamedTuple):
-    """Note that we record `games`, `wins`, `losses`, etc. as lists of
-    games (rather than just the count), so the underlying detail-level
-    information is readily available to the analysis class.  The count
-    for each type of result is available as a property
+    """Note that we record `games`, `wins`, `losses`, etc. as lists of games
+    (rather than just the count), so the underlying detail-level information
+    is readily available to the analysis class.  The count for each type of
+    result is available as a derived property
     """
     games:       list[Game]
     wins:        list[Game]
@@ -235,8 +264,8 @@ class AnlyStats(NamedTuple):
     pts_against: int
     yds_for:     int
     yds_against: int
-    tos_for:     int
-    tos_against: int
+    tos_for:     int  # committed by current team
+    tos_against: int  # committed by opponent
 
     @property
     def num_games(self) -> int:
@@ -311,10 +340,15 @@ class AnlyStats(NamedTuple):
     @property
     def tos_margin(self) -> float:
         """Average turnover margin for games evaluated
+
+        NOTE: this stat is computed to represent take-away differential (to use
+        the proper sports term), as opposed to difference of turnovers *by* the
+        teams, so that a higher number continues to indicate better performance
+        (consistent with the other stats in this class)
         """
         if not self.games:
             return -1.0
-        return (self.tos_for - self.tos_against) / len(self.games)
+        return (self.tos_against - self.tos_for) / len(self.games)
 
     @property
     def total_tos(self) -> float:
@@ -360,21 +394,23 @@ class Analysis:
         self.add_filter(_AnlyFilterRevChron())
 
     def add_filter(self, filter: AbstrAnlyFilter) -> None:
-        """Add the same filter to the analysis for both teams in the game
-        context
+        """Add filter or team filter map to the analysis for the teams in
+        the game context
         """
         if isinstance(filter, dict):
-            return self.add_filters(filter)
+            return self.add_team_filter(filter)
+        assert isinstance(filter, AnlyFilter)
         if self.frozen and type(filter) not in FRAMEWORK_FILTERS:
             raise LogicError("Cannot add filters after analysis is frozen")
+        # apply the same filter to both teams
         for team in self.team_filters:
             self.team_filters[team].append(filter)
 
-    def add_filters(self, filters: dict[Team, AnlyFilter]) -> None:
-        """Add different filters to the analysis for the two teams in the
-        game context, indexed by `Team`
+    def add_team_filter(self, team_filter: dict[Team, AnlyFilter]) -> None:
+        """Add map of filters (indexed by `Team`) to the analysis for the
+        teams in the game context
         """
-        for team, filter in filters.items():
+        for team, filter in team_filter.items():
             if self.frozen and type(filter) not in FRAMEWORK_FILTERS:
                 raise LogicError("Cannot add filters after analysis is frozen")
             self.team_filters[team].append(filter)
@@ -402,7 +438,7 @@ class Analysis:
                 if type(filter) in TEAM_SCOPE_FILTERS:
                     team_scope = True
             if not team_scope:
-                self.add_filters({team_i: _AnlyFilterSelf()})
+                self.add_team_filter({team_i: _AnlyFilterSelf()})
 
         query = Game.select()
 

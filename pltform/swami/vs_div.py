@@ -2,9 +2,9 @@
 
 from ..game import GameInfo, Pick
 from ..analysis import AnlyFilterDiv
-from .cyber import SwamiCyber
+from .cyber_basic import SwamiCyberBasic
 
-class SwamiVsDiv(SwamiCyber):
+class SwamiVsDiv(SwamiCyberBasic):
     """Rudimentary prediction based on most recent games against a specific
     opponent team
     """

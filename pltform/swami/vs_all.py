@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from ..game import GameInfo, Pick
-from .cyber import SwamiCyber
+from .cyber_basic import SwamiCyberBasic
 
-class SwamiVsAll(SwamiCyber):
+class SwamiVsAll(SwamiCyberBasic):
     """Rudimentary prediction based on most recent games against any opponent
     """
     def get_pick(self, game_info: GameInfo) -> Pick:
