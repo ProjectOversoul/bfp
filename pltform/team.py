@@ -48,7 +48,7 @@ class Team(BaseModel):
     full_name = TextField()
     conf      = TextField()
     div       = TextField()
-    pfr_code  = TextField()
+    pfr_code  = TextField(unique=True)
     timezone  = TextField(null=True)
 
 #############

@@ -125,7 +125,7 @@ class Game(BaseModel):
     datetime     = DateTimeField()
     home_team    = ForeignKeyField(Team, column_name='home_team', backref='home_games')
     away_team    = ForeignKeyField(Team, column_name='away_team', backref='away_games')
-    boxscore_url = TextField()
+    boxscore_url = TextField(unique=True)
 
     # enrichment info
     pt_spread    = FloatField(null=True)  # negative - home favorite, 0 - pick'em
@@ -147,7 +147,7 @@ class Game(BaseModel):
     class Meta:
         indexes = (
             # make sure games are not double-loaded
-            (('season', 'week', 'home_team', 'away_team'), True)
+            (('season', 'week', 'home_team', 'away_team'), True),
         )
 
     @property

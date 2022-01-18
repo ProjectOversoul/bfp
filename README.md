@@ -6,7 +6,7 @@ This project implements a framework upon which algorithms for predicting the res
 NFL football games can be developed, tabulated against actual game outcomes, and evaluated
 against other algorithm.
 
-The objective here is not to build the ultimate football stats/predicdtion platform, but
+The objective here is not to build the ultimate football stats/prediction platform, but
 rather to outline a high-level design, which can then be extended and enhanced to include
 additional algorithmic and human participation.  The foundation exists for being able to
 run configurable, on-going competitive pools for both organic and silicon-based entities.
@@ -20,7 +20,7 @@ four fundamental types of Swamis:
 
 - `Cyber` - An algorithm coded and configured within the platform
 - `External Data` - An external data source for current and/or historical picks
-- `Interactive ` - A human or an external algorithm interacting through a web app or API
+- `Interactive` - A human or an external algorithm interacting through a web app or API
 - `Web3` - A crypto-based algorithm executed via dapps and smart contracts on the blockchain
 
 Okay, just kidding on that last one--there are only three types of Swamis.
@@ -342,10 +342,10 @@ This project is licensed under the terms of the MIT License.
 
 ## Credits ##
 
-All of the NFL game data used by this application comes from [Pro Football
-Reference](https://www.pro-football-reference.com/).
+All of the NFL game data (including historical Vegas lines) used by this application comes
+from [Pro Football Reference](https://www.pro-football-reference.com/).
 
 The author would like to acknowledge Mike Grau, who ran a great football pool for many
-years.  The Pool component of this project derives from the ethos established by Mike's
-original (now defunct) nflswamis.com (though Mike would never delegate his picks to an
-algorithm).
+years.  The Pool component of this project draws inspiration from the format established
+by the (now defunct) nflswamis.com site.  I don't know if Mike would approve of humans
+delegating their picks to algorithms.

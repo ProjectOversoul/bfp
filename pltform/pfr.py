@@ -45,6 +45,9 @@ for code, info in TEAMS.items():
 PFR_GAMES_URL   = PFR['games_url']
 PFR_GAMES_FILE  = PFR['games_file']
 PFR_GAMES_STATS = PFR['games_stats']
+PFR_LINES_URL   = PFR['lines_url']
+PFR_LINES_FILE  = PFR['lines_file']
+PFR_LINES_STATS = PFR['lines_stats']
 # optional in config file (has usable defaults here)
 HTML_PARSER     = PFR.get('html_parser')    or 'lxml'
 HTTP_HEADERS    = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
@@ -59,6 +62,9 @@ def str_proc(value: str) -> str:
 
 def int_proc(value: str) -> int:
     return int(value)
+
+def float_proc(value: str) -> float:
+    return float(value)
 
 def date_proc(value: str) -> date:
     return datetime.strptime(value, DATE_FMT).date()
@@ -77,11 +83,12 @@ def team_proc(value: str) -> str:
         raise DataError(f"Unexpected format for href '{value}'")
     return TEAM_CODE[elems[2]]
 
-TYPE_PROC = {'str':  str_proc,
-             'int':  int_proc,
-             'date': date_proc,
-             'time': time_proc,
-             'team': team_proc}
+TYPE_PROC = {'str':   str_proc,
+             'int':   int_proc,
+             'float': float_proc,
+             'date':  date_proc,
+             'time':  time_proc,
+             'team':  team_proc}
 
 def replace_tokens(fmt: str, **kwargs) -> str:
     """Replace tokens in format string with values passed in as keyword args.
@@ -103,7 +110,7 @@ def replace_tokens(fmt: str, **kwargs) -> str:
         new_str = new_str.replace(token, value)
     return new_str
 
-def get_game_data(years: Iterable[int]) -> int:
+def fetch_game_data(years: Iterable[int]) -> int:
     url_fmt  = PFR_GAMES_URL
     file_fmt = PFR_GAMES_FILE
 
@@ -113,6 +120,9 @@ def get_game_data(years: Iterable[int]) -> int:
             sleep(FETCH_INTERVAL)  # be nice to website
         url  = replace_tokens(url_fmt, year=str(year))
         req  = sess.get(url, headers=HTTP_HEADERS)
+        if not req.ok:
+            log.info(f"GET '{url}' returned status code {req.status_code}, skipping...")
+            continue
         html = req.text
         log.debug(f"Downloaded {len(html)} bytes from '{url}'")
 
@@ -122,6 +132,48 @@ def get_game_data(years: Iterable[int]) -> int:
         log.debug(f"Wrote {nbytes} bytes to '{file_path}'")
 
     return 0
+
+def parse_game_data(html: str) -> list[dict]:
+    games_meta = PFR_GAMES_STATS
+
+    parsed = []
+    soup  = BeautifulSoup(html, HTML_PARSER)
+    table = soup.find('table')
+
+    # do integrity check on games metadata, build field processor
+    field_proc = {}
+    header = table.find('thead')
+    for col in header.find_all('th'):
+        col_key = col['data-stat']
+        if col_key not in games_meta:
+            raise DataError(f"Stats type '{col_key}' not in `games_stats`")
+        col_type = games_meta[col_key]
+        field_proc[col_key] = TYPE_PROC[col_type]
+
+    body = table.find('tbody')
+    for i, row in enumerate(body.find_all('tr')):
+        # skip periodic repeat of table header
+        if (tr_class := row.get('class')) and 'thead' in tr_class:
+            continue
+
+        row_data = {}
+        for j, col in enumerate(row.find_all(['th', 'td'])):
+            col_key = col['data-stat']
+            # use href under `a` tag, if it exists (e.g. for teams)
+            if anchor := col.find('a') :
+                value = anchor['href']
+            else:
+                value = col.string
+            # if this is a special formatting row, bail (and skip row below)
+            if j == 0 and value is None:
+                break
+            row_data[col_key] = None if value is None else field_proc[col_key](value)
+        # broke from inner loop (no data in row), skip it
+        if j == 0:
+            continue
+        parsed.append(row_data)
+
+    return parsed
 
 def game_data_iter(year: int, data: list[dict]) -> dict:
     """Iterator for games data, yields a dict suitable for feeding into `Game`
@@ -191,8 +243,12 @@ def load_game_data(years: Iterable[int]) -> int:
     # note that we do a separate atomic batch insert for each year
     for year in years:
         file_path = DataFile(replace_tokens(file_fmt, year=str(year)))
-        with open(file_path, 'r') as f:
-            html = f.read()
+        try:
+            with open(file_path, 'r') as f:
+                html = f.read()
+        except FileNotFoundError:
+            log.info(f"File {file_path} not found, skipping...")
+            continue
         log.debug(f"Read {len(html)} bytes from '{file_path}'")
         parsed = parse_game_data(html)
         games_data = []
@@ -203,29 +259,89 @@ def load_game_data(years: Iterable[int]) -> int:
 
     return 0
 
-def parse_game_data(html: str) -> list[dict]:
-    games_meta = PFR_GAMES_STATS
+def fetch_line_data(years: Iterable[int]) -> int:
+    url_fmt  = PFR_LINES_URL
+    file_fmt = PFR_LINES_FILE
+
+    sess = requests.Session()
+    for i, year in enumerate(years):
+        for j, team_code in enumerate(TEAM_CODE):
+            if i > 0 or j > 0:
+                sleep(FETCH_INTERVAL)  # be nice to website
+            url  = replace_tokens(url_fmt, year=str(year), team_code=team_code)
+            req  = sess.get(url, headers=HTTP_HEADERS)
+            if not req.ok:
+                log.info(f"GET '{url}' returned status code {req.status_code}, skipping...")
+                continue
+            html = req.text
+            log.debug(f"Downloaded {len(html)} bytes from '{url}'")
+
+            file_name = replace_tokens(file_fmt, year=str(year), team_code=team_code)
+            file_path = DataFile(file_name)
+            with open(file_path, 'w') as f:
+                nbytes = f.write(html)
+            log.debug(f"Wrote {nbytes} bytes to '{file_path}'")
+
+    return 0
+
+def line_data_iter(team_code: str, data: list[dict]) -> Game:
+    """Iterator for Vegas line data, yields a `Game` object with `pt_spread` and
+    `over_under` fields updated (based on parsed `data`), suitable for inclusion
+    in `Game.bulk_update()` call
+
+    :param team_code: PFR team code associated with `data`
+    :param data: parsed data from PFR "Vegas Lines" table for `team_code`
+    :return: `Game` with updated line-related fields
+    """
+    cur_team = TEAM_CODE[team_code]
+
+    for i, rec in enumerate(data):
+        opp_team     = rec['opp']
+        vegas_line   = rec['vegas_line']
+        over_under   = rec['over_under']
+        boxscore_url = rec['game_result']
+
+        game = Game.get(Game.boxscore_url == boxscore_url)
+        is_home = game.home_team.code == cur_team
+        if is_home:
+            if game.away_team.code != opp_team:
+                raise DataError(f"Away team conflict ({opp_team}) for game_id {game.game_id}")
+        else:
+            if game.away_team.code != cur_team:
+                raise DataError(f"Away team conflict ({cur_team}) for game_id {game.game_id}")
+            if game.home_team.code != opp_team:
+                raise DataError(f"Home team conflict ({opp_team}) for game_id {game.game_id}")
+
+        pt_spread = vegas_line if is_home else -vegas_line
+        if game.pt_spread is None:
+            # assume these are always updated together
+            game.pt_spread = pt_spread
+            game.over_under = over_under
+            yield game
+        else:
+            if game.pt_spread != pt_spread or game.over_under != over_under:
+                raise DataError(f"Vegas line conflict ({pt_spread}, {over_under}) "
+                                f"for game_id {game.game_id}")
+
+def parse_line_data(html: str) -> list[dict]:
+    lines_meta = PFR_LINES_STATS
 
     parsed = []
     soup  = BeautifulSoup(html, HTML_PARSER)
     table = soup.find('table')
 
-    # do integrity check on games metadata, build field processor
+    # do integrity check on lines metadata, build field processor
     field_proc = {}
     header = table.find('thead')
     for col in header.find_all('th'):
         col_key = col['data-stat']
-        if col_key not in games_meta:
-            raise DataError(f"Stats type '{col_key}' not in `games_stats`")
-        col_type = games_meta[col_key]
+        if col_key not in lines_meta:
+            raise DataError(f"Stats type '{col_key}' not in `lines_stats`")
+        col_type = lines_meta[col_key]
         field_proc[col_key] = TYPE_PROC[col_type]
 
     body = table.find('tbody')
     for i, row in enumerate(body.find_all('tr')):
-        # skip periodic repeat of table header
-        if (tr_class := row.get('class')) and 'thead' in tr_class:
-            continue
-
         row_data = {}
         for j, col in enumerate(row.find_all(['th', 'td'])):
             col_key = col['data-stat']
@@ -234,17 +350,41 @@ def parse_game_data(html: str) -> list[dict]:
                 value = anchor['href']
             else:
                 value = col.string
-            # if this is a special formatting row, bail (and skip row below)
-            if j == 0 and value is None:
-                break
             row_data[col_key] = None if value is None else field_proc[col_key](value)
-        # broke from inner loop (no data in row), skip it
-        if j == 0:
-            continue
         parsed.append(row_data)
 
     return parsed
-    
+
+def load_line_data(years: Iterable[int]) -> int:
+    file_fmt = PFR_LINES_FILE
+
+    if db.is_closed():
+        db.connect()
+
+    # note that we do a separate atomic batch update for each team's games in a given
+    # year, noting that games already updated (via opposing team's update pass) are
+    # skipped, after validating consistency
+    for year in years:
+        for team_code in TEAM_CODE:
+            file_name = replace_tokens(file_fmt, year=str(year), team_code=team_code)
+            file_path = DataFile(file_name)
+            try:
+                with open(file_path, 'r') as f:
+                    html = f.read()
+            except FileNotFoundError:
+                log.info(f"File {file_path} not found, skipping...")
+                continue
+            log.debug(f"Read {len(html)} bytes from '{file_path}'")
+            parsed = parse_line_data(html)
+            upd_games = []
+            for upd_game in line_data_iter(team_code, parsed):
+                upd_games.append(upd_game)
+            if upd_games:
+                with db.atomic():
+                    Game.bulk_update(upd_games, fields=[Game.pt_spread, Game.over_under])
+
+    return 0
+
 ########
 # Main #
 ########
@@ -255,8 +395,10 @@ def main() -> int:
     Usage: pfr.py <util_func> [<args> ...]
 
     Functions/usage:
-      - get_game_data years=<years>
+      - fetch_game_data years=<years>
       - load_game_data years=<years>
+      - fetch_line_data years=<years>
+      - load_line_data years=<years>
 
     where <years> can be:
       - single year    (e.g. '2021')

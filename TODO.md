@@ -4,8 +4,8 @@
 - Test data and test cases for:
   - Analysis framework and filters
   - Pool results aggregation
-- Add additional data source(s) for points spreads and over/under numbers
-  - Implement SwamiLasVegas based on the odds data
+- Add data source for current points spreads and over/under (i.e. for upcoming games)
+- Implement SwamiLasVegas based on historical and current odds information
 - Implement SwamiFiveThirtyEight as an example of External Data swami implementation
 - Cleanup and unify console scripts for consistent operation of the platform
   - data_mgr tool
