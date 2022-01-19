@@ -4,12 +4,12 @@
 
 This project implements a framework upon which algorithms for predicting the results of
 NFL football games can be developed, tabulated against actual game outcomes, and evaluated
-against other algorithm.
+against other algorithms.
 
 The objective here is not to build the ultimate football stats/prediction platform, but
 rather to outline a high-level design, which can then be extended and enhanced to include
 additional algorithmic and human participation.  The foundation exists for being able to
-run configurable, on-going competitive pools for both organic and silicon-based entities.
+run configurable, on-going competitive pools for both silicon- and carbon-based entities.
 
 ## Platform Objects ##
 
@@ -40,7 +40,7 @@ A "pick" consists of four components:
 - Points margin
 - Total points
 
-The actual data structure looks like this:
+The actual data structure returned by `get_pick()` looks like this:
 
 ```python
 class Pick(NamedTuple):
@@ -89,13 +89,16 @@ If both `num_games` and `num_seasons` are specified, `num_seasons` is used (and
 | --- | --- |
 | `games` | Number of games played in analysis set |
 | `wins` | Number of wins |
+| `win_pct` | Straight-up win percentage |
 | `ats_wins` | Number of wins against the spread |
+| `ats_win_pct` | Against-the-spread win percentage |
 | `pts` | Average points margin |
 | `yds` | Average yards margin |
 | `tos` | Average turnover margin (take-aways) |
 
 Note that "turnover margin" is computed such that a higher number continues to indicate
-better team performance, consistent with the other `criteria` stats.
+better team performance (that is, _not_ turnover give-aways), consistent with the other
+`criteria` stats.
 
 Cyber Swamis are defined in the `swamis.yml` configuration file.  The specification for a
 swami might be done as such:
@@ -119,19 +122,20 @@ default:
         num_games:   3
 ```
 
-Note that Swamis are defined against a `swami_class`, which is a subclass of
-`SwamiCyberBasic`.  Any of the parameters specified under `swami_classes` (for
-`SwamiVsTeam`, in this case) are inherited, or may be overridden, by the specific Swami
-entry ("Rudi 6", here).  In this example, the `criteria` configuration specifies that for
-the two teams in a matchup, and the set of games under analysis on each side, aggregate
-wins, points margin, and then yards margin will be compared, in that order.  The first
-comparison that favors one team or the other will determine the pick by the algorithm.
+Note that Swamis (e.g. "Rudi 6, here) are defined on top of a `swami_class`, which is a
+subclass of `SwamiCyberBasic`.  Any of the parameters specified under the named class in
+`swami_classes` (`SwamiVsTeam`, in this case) are inherited, or may be overridden, by the
+specific Swami entry.  In this example, the `criteria` configuration specifies that for
+the two teams in a matchup, and the set of games under analysis on each side, the stats
+compared will be: (1) aggregated wins; (2) points margin; and then (3) yards margin--in
+that order.  The first comparison that favors one team or the other will determine the
+selected pick for the algorithm.
 
-The code in the Swami implementation class determines the details of which games are
-considered, by instantiating an `Analysis` object and adding "filters" that will be
-applied to the database of past games (these will be discussed in the "Analysis" section).
-The implementation class also determines how the against-the-spread pick and values for
-points margin and total points are computed.
+The code in the Swami implementation class (e.g. `SwamiVsTeam`) determines the details of
+which games are considered by instantiating an `Analysis` object and adding "filters" that
+will be applied to the database of past games (these will be discussed in the "Analysis"
+section).  The implementation class also determines how the against-the-spread pick and
+values for points margin and total points are computed.
 
 The initial set of `SwamiCyberBasic` implementations are as follows:
 
@@ -142,7 +146,7 @@ The initial set of `SwamiCyberBasic` implementations are as follows:
 | `SwamiVsDiv` | Analyze games against opposing team's division |
 | `SwamiVsConf` | Analyze games against opposing team's conference |
 
-Additional implementation classes may be added for any number and/or combination of
+Additional implementation classes may be added for any number and/or combination of the
 analysis filters described below.
 
 #### External Data Swamis ####
@@ -159,7 +163,7 @@ There are currently two External Data Swamis planned (though not yet implemented
 #### Interactive Swamis ####
 
 There are no specific designs for Interactive Swamis yet, but two possible implementations
-for running live pools can be envisioned:
+for participation in live pools can be envisioned:
 
 - `SwamiHuman` - Integration with an internal web-app (yet to be developed) for human
   participation in an ongoing pool.
@@ -348,4 +352,4 @@ from [Pro Football Reference](https://www.pro-football-reference.com/).
 The author would like to acknowledge Mike Grau, who ran a great football pool for many
 years.  The Pool component of this project draws inspiration from the format established
 by the (now defunct) nflswamis.com site.  I don't know if Mike would approve of humans
-delegating their picks to algorithms.
+delegating their picks to computational algorithms.

@@ -22,6 +22,7 @@ setup(
             'game     = pltform.game:main',
             'team     = pltform.team:main',
             'pfr      = pltform.pfr:main',
+            'fte      = pltform.fte:main',
             'swami    = pltform.swami:main',
             'pool     = pltform.pool:main',
             'db_admin = pltform.db_admin:main'

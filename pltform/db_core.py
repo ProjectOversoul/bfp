@@ -4,7 +4,7 @@ from peewee import SqliteDatabase, Model
 
 from .core import cfg, DataFile, ConfigError
 
-DFLT_DB    = 'bfp.db'
+DFLT_DB    = 'bfp.sqlite'
 DB_KEY     = 'databases'
 SQLITE_KEY = 'sqlite'
 

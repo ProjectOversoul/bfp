@@ -7,6 +7,12 @@ default:
     SwamiHuman:
       swami_type:    interact
       class_params:
+    SwamiLasVegas:
+      swami_type:    ext_data
+      class_params:
+    SwamiFiveThirtyEight:
+      swami_type:    ext_data
+      class_params:
     SwamiVsAll:
       swami_type:    cyber
       class_params:
@@ -37,6 +43,16 @@ default:
       about_me:
       module_path:   pltform.swami
       swami_class:   SwamiHuman
+      swami_params:
+    Las Vegas:
+      about_me:
+      module_path:   pltform.swami
+      swami_class:   SwamiLasVegas
+      swami_params:
+    FiveThirtyEight:
+      about_me:
+      module_path:   pltform.swami
+      swami_class:   SwamiFiveThirtyEight
       swami_params:
     Rudi 1:
       about_me:      "Pick based on last game played"

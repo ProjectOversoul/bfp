@@ -25,37 +25,18 @@ if not data_src or PFR_SECT_KEY not in data_src:
     raise ConfigError("'{DATA_SRC_KEY}' or '{PFR_SECT_KEY}' not found in config file")
 PFR = data_src.get(PFR_SECT_KEY)
 
-#############
-# Team Data #
-#############
+################
+# Common Utils #
+################
 
-# mapping from PFR team code to `Team` primary key
-TEAM_CODE = {}
-for code, info in TEAMS.items():
-    pfr_code = info.get('pfr_code')
-    if not pfr_code:
-        raise ConfigError(f"'pfr_code' not found for team '{code}'")
-    TEAM_CODE[pfr_code] = code
+# optional in config file (usable defaults here)
+HTML_PARSER    = PFR.get('html_parser')    or 'lxml'
+HTTP_HEADERS   = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
+FETCH_INTERVAL = PFR.get('fetch_interval') or 1.0
 
-#############
-# Game Data #
-#############
-
-# must be specified in config file
-PFR_GAMES_URL   = PFR['games_url']
-PFR_GAMES_FILE  = PFR['games_file']
-PFR_GAMES_STATS = PFR['games_stats']
-PFR_LINES_URL   = PFR['lines_url']
-PFR_LINES_FILE  = PFR['lines_file']
-PFR_LINES_STATS = PFR['lines_stats']
-# optional in config file (has usable defaults here)
-HTML_PARSER     = PFR.get('html_parser')    or 'lxml'
-HTTP_HEADERS    = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
-FETCH_INTERVAL  = PFR.get('fetch_interval') or 1.0
-
-DATE_FMT        = '%Y-%m-%d'
-TIME_FMT        = '%I:%M%p'
-TEAM_HREF_PFX   = ['', 'teams']
+DATE_FMT       = '%Y-%m-%d'
+TIME_FMT       = '%I:%M%p'
+TEAM_HREF_PFX  = ['', 'teams']
 
 def str_proc(value: str) -> str:
     return value
@@ -109,6 +90,27 @@ def replace_tokens(fmt: str, **kwargs) -> str:
             raise RuntimeError(f"Token '{token_var}' not found in {kwargs}")
         new_str = new_str.replace(token, value)
     return new_str
+
+#############
+# Team Data #
+#############
+
+# mapping from PFR team code to `Team` primary key
+TEAM_CODE = {}
+for code, info in TEAMS.items():
+    pfr_code = info.get('pfr_code')
+    if not pfr_code:
+        raise ConfigError(f"'pfr_code' not found for team '{code}'")
+    TEAM_CODE[pfr_code] = code
+
+#############
+# Game Data #
+#############
+
+# must be specified in config file
+PFR_GAMES_URL   = PFR['games_url']
+PFR_GAMES_FILE  = PFR['games_file']
+PFR_GAMES_STATS = PFR['games_stats']
 
 def fetch_game_data(years: Iterable[int]) -> int:
     url_fmt  = PFR_GAMES_URL
@@ -255,9 +257,18 @@ def load_game_data(years: Iterable[int]) -> int:
         for game_data in game_data_iter(year, parsed):
             games_data.append(game_data)
         with db.atomic():
-            Game.insert_many(games_data).execute()
+            Game.replace_many(games_data).execute()
 
     return 0
+
+###################
+# Vegas Line Data #
+###################
+
+# must be specified in config file
+PFR_LINES_URL   = PFR['lines_url']
+PFR_LINES_FILE  = PFR['lines_file']
+PFR_LINES_STATS = PFR['lines_stats']
 
 def fetch_line_data(years: Iterable[int]) -> int:
     url_fmt  = PFR_LINES_URL

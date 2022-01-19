@@ -60,16 +60,19 @@ class SwamiCyberBasic(Swami):
         for crit in self.criteria:
             stat = self.CRIT_MAP[crit]
             if getattr(home_stats, stat) > getattr(away_stats, stat):
-                winner = home_team
-                margin = home_stats.pts_margin
+                winner    = home_team
+                margin    = home_stats.pts_margin
+                my_spread = -margin
                 break
             elif getattr(home_stats, stat) < getattr(away_stats, stat):
-                winner = away_team
-                margin = away_stats.pts_margin
+                winner    = away_team
+                margin    = away_stats.pts_margin
+                my_spread = margin
                 break
         else:
             # all else being equal, pick the home team
             winner = home_team
             margin = home_stats.pts_margin
 
-        return Pick(winner, None, max(round(margin), 1), round(total_pts))
+        ats_winner = away_team if my_spread > game_info.pt_spread else home_team
+        return Pick(winner, ats_winner, max(round(margin), 1), round(total_pts))

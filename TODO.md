@@ -8,7 +8,7 @@
 - Implement SwamiLasVegas based on historical and current odds information
 - Implement SwamiFiveThirtyEight as an example of External Data swami implementation
 - Cleanup and unify console scripts for consistent operation of the platform
-  - data_mgr tool
+  - data_mgr tool (command for clean data update)
   - pool_mgr tool
   - swami_mgr tool
 - Automated loading of base data (from PFR and odds data source)

@@ -9,7 +9,21 @@
 
 default:
   data_sources:
+    fte:
+      full_name:        FiveThirtyEight
+      html_parser:      lxml
+      http_headers:     {'User-Agent': 'Mozilla/5.0'}
+      fetch_interval:   1.0
+      predict_url:      https://projects.fivethirtyeight.com/<YEAR>-nfl-predictions/games/
+      predict_file:     projects.fivethirtyeight.com_<YEAR>-nfl-predictions_games.html
+      #predict_file:     <YEAR> NFL Predictions _ FiveThirtyEight.html
+      predict_stats:
+        team:           team
+        spread:         spread
+        chance:         pct
+        score:          int
     pfr:
+      full_name:        Pro Football Reference
       html_parser:      lxml
       http_headers:     {'User-Agent': 'Mozilla/5.0'}
       fetch_interval:   1.0
@@ -44,7 +58,7 @@ default:
         ou_result:        str
   databases:
     sqlite:
-      db_file:   bfp.db
+      db_file:   bfp.sqlite
   teams:
     # AFC East
     BUF:
@@ -53,24 +67,28 @@ default:
       conf:      AFC
       div:       AFC East
       pfr_code:  buf
+      fte_name:  Bills
     MIA:
       name:      Dolphins
       full_name: Miami Dolphins
       conf:      AFC
       div:       AFC East
       pfr_code:  mia
+      fte_name:  Dolphins
     NE:
       name:      Patriots
       full_name: New England Patriots
       conf:      AFC
       div:       AFC East
       pfr_code:  nwe
+      fte_name:  Patriots
     NYJ:
       name:      Jets
       full_name: New York Jets
       conf:      AFC
       div:       AFC East
       pfr_code:  nyj
+      fte_name:  Jets
     # AFC North
     BAL:
       name:      Ravens
@@ -78,24 +96,28 @@ default:
       conf:      AFC
       div:       AFC North
       pfr_code:  rav
+      fte_name:  Ravens
     CIN:
       name:      Bengals
       full_name: Cincinnati Bengals
       conf:      AFC
       div:       AFC North
       pfr_code:  cin
+      fte_name:  Bengals
     CLE:
       name:      Browns
       full_name: Cleveland Browns
       conf:      AFC
       div:       AFC North
       pfr_code:  cle
+      fte_name:  Browns
     PIT:
       name:      Steelers
       full_name: Pittsburgh Steelers
       conf:      AFC
       div:       AFC North
       pfr_code:  pit
+      fte_name:  Steelers
     # AFC South
     HOU:
       name:      Texans
@@ -103,24 +125,28 @@ default:
       conf:      AFC
       div:       AFC South
       pfr_code:  htx
+      fte_name:  Texans
     IND:
       name:      Colts
       full_name: Indianapolis Colts
       conf:      AFC
       div:       AFC South
       pfr_code:  clt
+      fte_name:  Colts
     JAX:
       name:      Jaguars
       full_name: Jacksonville Jaguars
       conf:      AFC
       div:       AFC South
       pfr_code:  jax
+      fte_name:  Jaguars
     TEN:
       name:      Titans
       full_name: Tennessee Titans
       conf:      AFC
       div:       AFC South
       pfr_code:  oti
+      fte_name:  Titans
     # AFC West
     DEN:
       name:      Broncos
@@ -128,24 +154,28 @@ default:
       conf:      AFC
       div:       AFC West
       pfr_code:  den
+      fte_name:  Broncos
     KC:
       name:      Chiefs
       full_name: Kansas City Chiefs
       conf:      AFC
       div:       AFC West
       pfr_code:  kan
+      fte_name:  Chiefs
     LAC:
       name:      Chargers
       full_name: Los Angeles Chargers
       conf:      AFC
       div:       AFC West
       pfr_code:  sdg
+      fte_name:  Chargers
     LV:
       name:      Raiders
       full_name: Las Vegas Raiders
       conf:      AFC
       div:       AFC West
       pfr_code:  rai
+      fte_name:  Raiders
     # NFC East
     DAL:
       name:      Cowboys
@@ -153,24 +183,28 @@ default:
       conf:      NFC
       div:       NFC East
       pfr_code:  dal
+      fte_name:  Cowboys
     NYG:
       name:      Giants
       full_name: New York Giants
       conf:      NFC
       div:       NFC East
       pfr_code:  nyg
+      fte_name:  Giants
     PHI:
       name:      Eagles
       full_name: Philadelphia Eagles
       conf:      NFC
       div:       NFC East
       pfr_code:  phi
+      fte_name:  Eagles
     WAS:
-      name:      Washington Football Team
+      name:      Washington
       full_name: Washington Football Team
       conf:      NFC
       div:       NFC East
       pfr_code:  was
+      fte_name:  Washington
     # NFC North
     CHI:
       name:      Bears
@@ -178,24 +212,28 @@ default:
       conf:      NFC
       div:       NFC North
       pfr_code:  chi
+      fte_name:  Bears
     DET:
       name:      Lions
       full_name: Detroit Lions
       conf:      NFC
       div:       NFC North
       pfr_code:  det
+      fte_name:  Lions
     GB:
       name:      Packers
       full_name: Green Bay Packers
       conf:      NFC
       div:       NFC North
       pfr_code:  gnb
+      fte_name:  Packers
     MIN:
       name:      Vikings
       full_name: Minnesota Vikings
       conf:      NFC
       div:       NFC North
       pfr_code:  min
+      fte_name:  Vikings
     # NFC South
     ATL:
       name:      Falcons
@@ -203,24 +241,28 @@ default:
       conf:      NFC
       div:       NFC South
       pfr_code:  atl
+      fte_name:  Falcons
     CAR:
       name:      Panthers
       full_name: Carolina Panthers
       conf:      NFC
       div:       NFC South
       pfr_code:  car
+      fte_name:  Panthers
     'NO':
       name:      Saints
       full_name: New Orleans Saints
       conf:      NFC
       div:       NFC South
       pfr_code:  nor
+      fte_name:  Saints
     TB:
       name:      Buccaneers
       full_name: Tampa Bay Buccaneers
       conf:      NFC
       div:       NFC South
       pfr_code:  tam
+      fte_name:  Buccaneers
     # NFC West
     ARZ:
       name:      Cardinals
@@ -228,21 +270,25 @@ default:
       conf:      NFC
       div:       NFC West
       pfr_code:  crd
+      fte_name:  Cardinals
     LAR:
       name:      Rams
       full_name: Los Angeles Rams
       conf:      NFC
       div:       NFC West
       pfr_code:  ram
+      fte_name:  Rams
     SEA:
       name:      Seahawks
       full_name: Seattle Seahawks
       conf:      NFC
       div:       NFC West
       pfr_code:  sea
+      fte_name:  Seahawks
     SF:
       name:      49ers
       full_name: San Francisco 49ers
       conf:      NFC
       div:       NFC West
       pfr_code:  sfo
+      fte_name:  49ers

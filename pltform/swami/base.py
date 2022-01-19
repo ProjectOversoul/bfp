@@ -110,10 +110,10 @@ class Swami(BaseModel):
         params = json.loads(self.swami_params) if self.swami_params else {}
 
         class_info = self.__class__.get_class_info()
-        base_params = class_info.get('class_params')
-        if not base_params:
+        if 'class_params' not in class_info:
             class_name = self.__class__.__name__
             raise ConfigError(f"`class_params` missing for swami class `{class_name}`")
+        base_params = class_info.get('class_params') or {}
         for key, base_value in base_params.items():
             # note that empty values in `params` should override base values
             setattr(self, key, params[key] if key in params else base_value)
@@ -139,10 +139,10 @@ class Swami(BaseModel):
 class SwamiPick(BaseModel):
     """Represents both current and historical picks for all swami types
     """
-    swami:      ForeignKeyField(Swami)
-    game:       ForeignKeyField(Game)
-    su_winner:  ForeignKeyField(Team, backref='su_picks')
-    ats_winner: ForeignKeyField(Team, backref='ats_picks', null=True)
-    pts_margin: IntegerField()   # from winner POV (i.e. must be greater than 0)
-    total_pts:  IntegerField()
-    pick_ts:    DateTimeField()  # timestamp for the pick itself
+    swami      = ForeignKeyField(Swami)
+    game       = ForeignKeyField(Game)
+    su_winner  = ForeignKeyField(Team, backref='su_picks')
+    ats_winner = ForeignKeyField(Team, backref='ats_picks', null=True)
+    pts_margin = IntegerField()   # from winner POV (i.e. must be greater than 0)
+    total_pts  = IntegerField()
+    pick_ts    = DateTimeField()  # timestamp for the pick itself
