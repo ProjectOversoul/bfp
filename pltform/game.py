@@ -70,15 +70,16 @@ class Pick(NamedTuple):
 ############
 
 class GameInfo(NamedTuple):
-    id:         int
-    season:     int    # year of season start
-    week:       Week   # ordinal within season, or special `PlayoffWeek` value
-    day:        WeekDay
-    datetime:   datetime
-    home_team:  Team
-    away_team:  Team
-    pt_spread:  float | None  # "pick" is represented by 0.0
-    over_under: float | None
+    id:           int
+    season:       int    # year of season start
+    week:         Week   # ordinal within season, or special `PlayoffWeek` value
+    day:          WeekDay
+    datetime:     datetime
+    home_team:    Team
+    away_team:    Team
+    neutral_site: bool
+    pt_spread:    float | None  # "pick" is represented by 0.0
+    over_under:   float | None
 
 ###############
 # GameResults #
@@ -213,6 +214,7 @@ class Game(BaseModel):
                                self.datetime,
                                self.home_team,
                                self.away_team,
+                               self.neutral_site,
                                self.pt_spread,
                                self.over_under))
 
@@ -240,12 +242,13 @@ variables needed to implement certain functions that can operate on either
 robust fashion, since `NamedTuple` doesn't support multiple inheritence.
 
 The required context variables are as follows:
-  id:         int  | IntegerField
-  season:     int  | IntegerField
-  week:       Week | IntegerField
-  datetime:   datetime
-  home_team:  Team
-  away_team:  Team
+  id:           int  | IntegerField
+  season:       int  | IntegerField
+  week:         Week | IntegerField
+  datetime:     datetime
+  home_team:    Team
+  away_team:    Team
+  neutral_site: bool
 """
 GameCtx = GameInfo | Game
 

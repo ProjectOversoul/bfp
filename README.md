@@ -278,15 +278,16 @@ when getting their picks:
 
 ```python
 class GameInfo(NamedTuple):
-    game_id:    int
-    season:     int    # year of season start
-    week:       Week   # ordinal within season, or special `PlayoffWeek` value
-    day:        WeekDay
-    datetime:   datetime
-    home_team:  Team
-    away_team:  Team
-    pt_spread:  float | None  # "pick" is represented by 0.0
-    over_under: float | None
+    id:           int
+    season:       int    # year of season start
+    week:         Week   # ordinal within season, or special `PlayoffWeek` value
+    day:          WeekDay
+    datetime:     datetime
+    home_team:    Team
+    away_team:    Team
+    neutral_site: bool
+    pt_spread:    float | None  # "pick" is represented by 0.0
+    over_under:   float | None
 ```
 
 Typically, this structure is passed through to the `Analysis` class, from which the stats

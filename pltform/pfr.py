@@ -96,8 +96,11 @@ TYPE_PROC = {'str':   str_proc,
              'team':  team_proc}
 
 # mapping from PFR team code to `Team` primary key
+TEAM_NO_MAP = {'NONE'}
 TEAM_CODE = {}
 for code, info in TEAMS.items():
+    if code in TEAM_NO_MAP:
+        continue
     pfr_code = info.get('pfr_code')
     if not pfr_code:
         raise ConfigError(f"'pfr_code' not found for team '{code}'")

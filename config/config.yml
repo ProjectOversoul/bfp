@@ -67,6 +67,7 @@ default:
       full_name: Buffalo Bills
       conf:      AFC
       div:       AFC East
+      timezone:  America/New_York
       pfr_code:  buf
       fte_names: [Bills, Buffalo]
     MIA:
@@ -74,6 +75,7 @@ default:
       full_name: Miami Dolphins
       conf:      AFC
       div:       AFC East
+      timezone:  America/New_York
       pfr_code:  mia
       fte_names: [Dolphins, Miami]
     NE:
@@ -81,6 +83,7 @@ default:
       full_name: New England Patriots
       conf:      AFC
       div:       AFC East
+      timezone:  America/New_York
       pfr_code:  nwe
       fte_names: [Patriots, New England]
     NYJ:
@@ -88,6 +91,7 @@ default:
       full_name: New York Jets
       conf:      AFC
       div:       AFC East
+      timezone:  America/New_York
       pfr_code:  nyj
       fte_names: [Jets, N.Y. Jets]
     # AFC North
@@ -96,6 +100,7 @@ default:
       full_name: Baltimore Ravens
       conf:      AFC
       div:       AFC North
+      timezone:  America/New_York
       pfr_code:  rav
       fte_names: [Ravens, Baltimore]
     CIN:
@@ -103,6 +108,7 @@ default:
       full_name: Cincinnati Bengals
       conf:      AFC
       div:       AFC North
+      timezone:  America/New_York
       pfr_code:  cin
       fte_names: [Bengals, Cincinnati]
     CLE:
@@ -110,6 +116,7 @@ default:
       full_name: Cleveland Browns
       conf:      AFC
       div:       AFC North
+      timezone:  America/New_York
       pfr_code:  cle
       fte_names: [Browns, Cleveland]
     PIT:
@@ -117,6 +124,7 @@ default:
       full_name: Pittsburgh Steelers
       conf:      AFC
       div:       AFC North
+      timezone:  America/New_York
       pfr_code:  pit
       fte_names: [Steelers, Pittsburgh]
     # AFC South
@@ -125,6 +133,7 @@ default:
       full_name: Houston Texans
       conf:      AFC
       div:       AFC South
+      timezone:  America/Chicago
       pfr_code:  htx
       fte_names: [Texans, Houston]
     IND:
@@ -132,6 +141,7 @@ default:
       full_name: Indianapolis Colts
       conf:      AFC
       div:       AFC South
+      timezone:  America/Indianapolis
       pfr_code:  clt
       fte_names: [Colts, Indianapolis]
     JAX:
@@ -139,6 +149,7 @@ default:
       full_name: Jacksonville Jaguars
       conf:      AFC
       div:       AFC South
+      timezone:  America/New_York
       pfr_code:  jax
       fte_names: [Jaguars, Jacksonville]
     TEN:
@@ -146,6 +157,7 @@ default:
       full_name: Tennessee Titans
       conf:      AFC
       div:       AFC South
+      timezone:  America/Chicago
       pfr_code:  oti
       fte_names: [Titans, Tennessee]
     # AFC West
@@ -154,6 +166,7 @@ default:
       full_name: Denver Broncos
       conf:      AFC
       div:       AFC West
+      timezone:  America/Denver
       pfr_code:  den
       fte_names: [Broncos, Denver]
     KC:
@@ -161,6 +174,7 @@ default:
       full_name: Kansas City Chiefs
       conf:      AFC
       div:       AFC West
+      timezone:  America/Chicago
       pfr_code:  kan
       fte_names: [Chiefs, Kansas City]
     LAC:
@@ -168,6 +182,7 @@ default:
       full_name: Los Angeles Chargers
       conf:      AFC
       div:       AFC West
+      timezone:  America/Los_Angeles
       pfr_code:  sdg
       fte_names: [Chargers, L.A. Chargers]
     LV:
@@ -175,6 +190,7 @@ default:
       full_name: Las Vegas Raiders
       conf:      AFC
       div:       AFC West
+      timezone:  America/Los_Angeles
       pfr_code:  rai
       fte_names: [Raiders, Oakland]
     # NFC East
@@ -183,6 +199,7 @@ default:
       full_name: Dallas Cowboys
       conf:      NFC
       div:       NFC East
+      timezone:  America/Chicago
       pfr_code:  dal
       fte_names: [Cowboys, Dallas]
     NYG:
@@ -190,6 +207,7 @@ default:
       full_name: New York Giants
       conf:      NFC
       div:       NFC East
+      timezone:  America/New_York
       pfr_code:  nyg
       fte_names: [Giants, N.Y. Giants]
     PHI:
@@ -197,6 +215,7 @@ default:
       full_name: Philadelphia Eagles
       conf:      NFC
       div:       NFC East
+      timezone:  America/New_York
       pfr_code:  phi
       fte_names: [Eagles, Philadelphia]
     WAS:
@@ -204,6 +223,7 @@ default:
       full_name: Washington Football Team
       conf:      NFC
       div:       NFC East
+      timezone:  America/New_York
       pfr_code:  was
       fte_names: [Washington]
     # NFC North
@@ -212,6 +232,7 @@ default:
       full_name: Chicago Bears
       conf:      NFC
       div:       NFC North
+      timezone:  America/Chicago
       pfr_code:  chi
       fte_names: [Bears, Chicago]
     DET:
@@ -219,6 +240,7 @@ default:
       full_name: Detroit Lions
       conf:      NFC
       div:       NFC North
+      timezone:  America/New_York
       pfr_code:  det
       fte_names: [Lions, Detroit]
     GB:
@@ -226,6 +248,7 @@ default:
       full_name: Green Bay Packers
       conf:      NFC
       div:       NFC North
+      timezone:  America/Chicago
       pfr_code:  gnb
       fte_names: [Packers, Green Bay]
     MIN:
@@ -233,6 +256,7 @@ default:
       full_name: Minnesota Vikings
       conf:      NFC
       div:       NFC North
+      timezone:  America/Chicago
       pfr_code:  min
       fte_names: [Vikings, Minnesota]
     # NFC South
@@ -241,6 +265,7 @@ default:
       full_name: Atlanta Falcons
       conf:      NFC
       div:       NFC South
+      timezone:  America/New_York
       pfr_code:  atl
       fte_names: [Falcons, Atlanta]
     CAR:
@@ -248,6 +273,7 @@ default:
       full_name: Carolina Panthers
       conf:      NFC
       div:       NFC South
+      timezone:  America/New_York
       pfr_code:  car
       fte_names: [Panthers, Carolina]
     'NO':
@@ -255,6 +281,7 @@ default:
       full_name: New Orleans Saints
       conf:      NFC
       div:       NFC South
+      timezone:  America/Chicago
       pfr_code:  nor
       fte_names: [Saints, New Orleans]
     TB:
@@ -262,6 +289,7 @@ default:
       full_name: Tampa Bay Buccaneers
       conf:      NFC
       div:       NFC South
+      timezone:  America/New_York
       pfr_code:  tam
       fte_names: [Buccaneers, Tampa Bay]
     # NFC West
@@ -270,6 +298,7 @@ default:
       full_name: Arizona Cardinals
       conf:      NFC
       div:       NFC West
+      timezone:  America/Phoenix
       pfr_code:  crd
       fte_names: [Cardinals, Arizona]
     LAR:
@@ -277,6 +306,7 @@ default:
       full_name: Los Angeles Rams
       conf:      NFC
       div:       NFC West
+      timezone:  America/Los_Angeles
       pfr_code:  ram
       fte_names: [Rams, L.A. Rams]
     SEA:
@@ -284,6 +314,7 @@ default:
       full_name: Seattle Seahawks
       conf:      NFC
       div:       NFC West
+      timezone:  America/Los_Angeles
       pfr_code:  sea
       fte_names: [Seahawks, Seattle]
     SF:
@@ -291,5 +322,13 @@ default:
       full_name: San Francisco 49ers
       conf:      NFC
       div:       NFC West
+      timezone:  America/Los_Angeles
       pfr_code:  sfo
       fte_names: [49ers, San Francisco]
+    # special record(s)
+    'NONE':
+      name:      'None'
+      full_name: n/a
+      conf:      n/a
+      div:       n/a
+      timezone:  n/a

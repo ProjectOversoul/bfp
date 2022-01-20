@@ -80,8 +80,11 @@ TYPE_PROC = {'str':    str_proc,
              'team':   team_proc}
 
 # mapping from FTE team name(s) to `Team` primary key
+TEAM_NO_MAP = {'NONE'}
 TEAM_NAME = {}
 for code, info in TEAMS.items():
+    if code in TEAM_NO_MAP:
+        continue
     fte_names = info.get('fte_names')
     if not fte_names:
         raise ConfigError(f"'fte_names' not found for team '{code}'")
@@ -174,7 +177,7 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
                            'su_winner':  winner,
                            'ats_winner': ats_winner,
                            'pts_margin': max(round(margin), 1),
-                           'total_pts':  0,
+                           'total_pts':  None,
                            'pick_ts':    datetime.now()}
         yield swami_pick_data
 

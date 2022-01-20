@@ -34,7 +34,6 @@ class TeamData(NamedTuple):
     full_name: str
     conf:      str
     div:       str
-    pfr_code:  str
     timezone:  str | None
 
 class Team(BaseModel):
@@ -48,8 +47,7 @@ class Team(BaseModel):
     full_name = TextField()
     conf      = TextField()
     div       = TextField()
-    pfr_code  = TextField(unique=True)
-    timezone  = TextField(null=True)
+    timezone  = TextField()
 
 #############
 # load_data #
@@ -66,8 +64,7 @@ def load_data() -> int:
                      'full_name' : info['full_name'],
                      'conf'      : info['conf'],
                      'div'       : info['div'],
-                     'pfr_code'  : info['pfr_code'],
-                     'timezone'  : info.get('timezone')}
+                     'timezone'  : info['timezone']}
         teams_data.append(team_data)
 
     if db.is_closed():
