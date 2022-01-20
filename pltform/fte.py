@@ -141,14 +141,18 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
                             Game.home_team == home_team,
                             Game.away_team == away_team)
         except DoesNotExist:
-            # note that teams may be flipped if played at neutral site, so
-            # try again, but validate the neutrality aspect
+            # note that data source teams may be in reverse order if game is played at
+            # a neutral site (e.g. super bowl), so flip them (along with their stats!)
+            # and try again, but make sure to validate the neutrality aspect
+            home_team, away_team = away_team, home_team
+            home_data, away_data = away_data, home_data
             game = Game.get(Game.season == year,
                             Game.week == week,
-                            Game.home_team == away_team,
-                            Game.away_team == home_team)
+                            Game.home_team == home_team,
+                            Game.away_team == away_team)
             if not game.neutral_site:
                 raise DataError(f"Teams flipped for non-neutral site, game_id {game.id}")
+
         # note that "pick'em" may be placed against either team--even though
         # that is translated into 0.0, use that team as the favorite
         if away_data['spread'] is not None:
