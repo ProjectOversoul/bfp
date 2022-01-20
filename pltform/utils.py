@@ -4,6 +4,7 @@ import os.path
 from collections.abc import Iterable
 from numbers import Number
 
+import regex as re
 import yaml
 
 #####################
@@ -131,3 +132,23 @@ def parse_argv(argv: list[str]) -> tuple[list, dict]:
         kwargs[kw] = typecast(val)
 
     return args, kwargs
+
+def replace_tokens(fmt: str, **kwargs) -> str:
+    """Replace tokens in format string with values passed in as keyword args.
+
+    Tokens in format string are represented by "<TOKEN_STR>" (all uppercase), and
+    are replaced in output string with corresponding lowercase entries in `kwargs`.
+
+    :param fmt: format string with one or more tokens
+    :param kwargs: possible token replacement values
+    :return: string with token replacements
+    """
+    new_str = fmt
+    tokens = re.findall(r'(\<[\p{Lu}\d_]+\>)', fmt)
+    for token in tokens:
+        token_var = token[1:-1].lower()
+        value = kwargs.get(token_var)
+        if not value:
+            raise RuntimeError(f"Token '{token_var}' not found in {kwargs}")
+        new_str = new_str.replace(token, value)
+    return new_str

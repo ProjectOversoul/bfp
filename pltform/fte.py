@@ -3,7 +3,7 @@
 
 import sys
 from collections.abc import Iterable
-from datetime import datetime, date, time
+from datetime import datetime
 from time import sleep
 
 import regex as re
@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup, Tag
 from peewee import *
 
-from .utils import parse_argv
+from .utils import parse_argv, replace_tokens
 from .core import cfg, DataFile, log, ConfigError, DataError
 from .db_core import db
 from .team import TEAMS, Team
@@ -26,10 +26,14 @@ if not data_src or FTE_SECT_KEY not in data_src:
     raise ConfigError("'{DATA_SRC_KEY}' or '{FTE_SECT_KEY}' not found in config file")
 FTE = data_src.get(FTE_SECT_KEY)
 
-SWAMI_NAME = 'FiveThirtyEight'
+# optional in config file (usable defaults here)
+HTML_PARSER    = FTE.get('html_parser')    or 'lxml'
+HTTP_HEADERS   = FTE.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
+FETCH_INTERVAL = FTE.get('fetch_interval') or 1.0
+SWAMI_NAME     = FTE.get('swami_name')     or 'FiveThirtyEight'
 
 ################
-# Common Utils #
+# Data Mapping #
 ################
 
 PLAYOFF_WEEK_MAP = {'Wild-card round':  PlayoffWeek.WC,
@@ -44,15 +48,7 @@ def week_conv(value: str) -> int:
         return week_val.value
     raise DataError(f"Unknown week value '{value}'")
 
-# optional in config file (usable defaults here)
-HTML_PARSER    = FTE.get('html_parser')    or 'lxml'
-HTTP_HEADERS   = FTE.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
-FETCH_INTERVAL = FTE.get('fetch_interval') or 1.0
-
-DATE_FMT       = '%Y-%m-%d'
-TIME_FMT       = '%I:%M%p'
-TEAM_HREF_PFX  = ['', 'teams']
-PICKEM_STR     = "PK"
+PICKEM_STR = "PK"
 
 def str_proc(value: str) -> str:
     return value
@@ -71,57 +67,26 @@ def spread_proc(value: str) -> float:
 def pct_proc(value: str) -> int:
     return int(value.split('%')[0])
 
-def date_proc(value: str) -> date:
-    return datetime.strptime(value, DATE_FMT).date()
-
-def time_proc(value: str) -> time:
-    return datetime.strptime(value, TIME_FMT).time()
-
 def team_proc(value: str) -> str:
-    if value not in TEAM_CODE:
+    if value not in TEAM_NAME:
         raise DataError(f"Unrecognized team name '{value}'")
-    return TEAM_CODE[value]
+    return TEAM_NAME[value]
 
 TYPE_PROC = {'str':    str_proc,
              'int':    int_proc,
              'float':  float_proc,
              'spread': spread_proc,
              'pct':    pct_proc,
-             'date':   date_proc,
-             'time':   time_proc,
              'team':   team_proc}
 
-def replace_tokens(fmt: str, **kwargs) -> str:
-    """Replace tokens in format string with values passed in as keyword args.
-
-    Tokens in format string are represented by "<TOKEN_STR>" (all uppercase), and
-    are replaced in output string with corresponding lowercase entries in `kwargs`.
-
-    :param fmt: format string with one or more tokens
-    :param kwargs: possible token replacement values
-    :return: string with token replacements
-    """
-    new_str = fmt
-    tokens = re.findall(r'(\<[\p{Lu}\d_]+\>)', fmt)
-    for token in tokens:
-        token_var = token[1:-1].lower()
-        value = kwargs.get(token_var)
-        if not value:
-            raise RuntimeError(f"Token '{token_var}' not found in {kwargs}")
-        new_str = new_str.replace(token, value)
-    return new_str
-
-#############
-# Team Data #
-#############
-
-# mapping from FTE team code to `Team` primary key
-TEAM_CODE = {}
+# mapping from FTE team name(s) to `Team` primary key
+TEAM_NAME = {}
 for code, info in TEAMS.items():
-    fte_name = info.get('fte_name')
-    if not fte_name:
-        raise ConfigError(f"'fte_name' not found for team '{code}'")
-    TEAM_CODE[fte_name] = code
+    fte_names = info.get('fte_names')
+    if not fte_names:
+        raise ConfigError(f"'fte_names' not found for team '{code}'")
+    for name in fte_names:
+        TEAM_NAME[name] = code
 
 ################
 # Predict Data #
@@ -170,10 +135,20 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
         home_team = Team.get(Team.code == home_data['team'])
         away_team = Team.get(Team.code == away_data['team'])
 
-        game = Game.get(Game.season == year,
-                        Game.week == week,
-                        Game.home_team == home_team,
-                        Game.away_team == away_team)
+        try:
+            game = Game.get(Game.season == year,
+                            Game.week == week,
+                            Game.home_team == home_team,
+                            Game.away_team == away_team)
+        except DoesNotExist:
+            # note that teams may be flipped if played at neutral site, so
+            # try again, but validate the neutrality aspect
+            game = Game.get(Game.season == year,
+                            Game.week == week,
+                            Game.home_team == away_team,
+                            Game.away_team == home_team)
+            if not game.neutral_site:
+                raise DataError(f"Teams flipped for non-neutral site, game_id {game.id}")
         # note that "pick'em" may be placed against either team--even though
         # that is translated into 0.0, use that team as the favorite
         if away_data['spread'] is not None:
@@ -190,10 +165,10 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
             ats_winner = None
         else:
             ats_winner = away_team if my_spread > game.pt_spread else home_team
-        swami_pick_data = {'swami':      swami.swami_id,
-                           'game':       game.game_id,
-                           'su_winner':  winner.code,
-                           'ats_winner': ats_winner.code if ats_winner else None,
+        swami_pick_data = {'swami':      swami,
+                           'game':       game,
+                           'su_winner':  winner,
+                           'ats_winner': ats_winner,
                            'pts_margin': max(round(margin), 1),
                            'total_pts':  0,
                            'pick_ts':    datetime.now()}
@@ -260,9 +235,7 @@ def load_predict_data(years: Iterable[int]) -> int:
 
     swami = Swami.get_by_name(SWAMI_NAME)
 
-    # note that we do a separate atomic batch update for each team's games in a given
-    # year, noting that games already updated (via opposing team's update pass) are
-    # skipped, after validating consistency
+    # note that we do a separate atomic batch insert for each year
     for year in years:
         file_name = replace_tokens(file_fmt, year=str(year))
         file_path = DataFile(file_name)

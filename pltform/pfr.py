@@ -6,16 +6,15 @@ from collections.abc import Iterable
 from datetime import datetime, date, time
 from time import sleep
 
-import regex as re
 import requests
 from bs4 import BeautifulSoup, Tag
 from peewee import *
 
-from .utils import parse_argv
+from .utils import parse_argv, replace_tokens
 from .core import cfg, DataFile, log, ConfigError, DataError
 from .db_core import db
 from .team import TEAMS
-from .game import PLAYOFF_WEEK_MAP, WEEKDAY_MAP, Game
+from .game import PlayoffWeek, WeekDay, Game
 
 DATA_SRC_KEY = 'data_sources'
 PFR_SECT_KEY = 'pfr'
@@ -25,14 +24,39 @@ if not data_src or PFR_SECT_KEY not in data_src:
     raise ConfigError("'{DATA_SRC_KEY}' or '{PFR_SECT_KEY}' not found in config file")
 PFR = data_src.get(PFR_SECT_KEY)
 
-################
-# Common Utils #
-################
-
 # optional in config file (usable defaults here)
 HTML_PARSER    = PFR.get('html_parser')    or 'lxml'
 HTTP_HEADERS   = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
 FETCH_INTERVAL = PFR.get('fetch_interval') or 1.0
+
+################
+# Data Mapping #
+################
+
+PLAYOFF_WEEK_MAP = {'WildCard':  PlayoffWeek.WC,
+                    'Division':  PlayoffWeek.DIV,
+                    'ConfChamp': PlayoffWeek.CONF,
+                    'SuperBowl': PlayoffWeek.SB}
+
+def week_conv(value: str) -> int:
+    if value.isnumeric():
+        return int(value)
+    if week_val := PLAYOFF_WEEK_MAP.get(value):
+        return week_val.value
+    raise DataError(f"Unknown week value '{value}'")
+
+WEEKDAY_MAP = {'Mon': WeekDay.MON,
+               'Tue': WeekDay.TUE,
+               'Wed': WeekDay.WED,
+               'Thu': WeekDay.THU,
+               'Fri': WeekDay.FRI,
+               'Sat': WeekDay.SAT,
+               'Sun': WeekDay.SUN}
+
+def weekday_conv(value: str) -> int:
+    if weekday_val := WEEKDAY_MAP.get(value):
+        return weekday_val.value
+    raise DataError(f"Unknown weekday value '{value}'")
 
 DATE_FMT       = '%Y-%m-%d'
 TIME_FMT       = '%I:%M%p'
@@ -70,30 +94,6 @@ TYPE_PROC = {'str':   str_proc,
              'date':  date_proc,
              'time':  time_proc,
              'team':  team_proc}
-
-def replace_tokens(fmt: str, **kwargs) -> str:
-    """Replace tokens in format string with values passed in as keyword args.
-
-    Tokens in format string are represented by "<TOKEN_STR>" (all uppercase), and
-    are replaced in output string with corresponding lowercase entries in `kwargs`.
-
-    :param fmt: format string with one or more tokens
-    :param kwargs: possible token replacement values
-    :return: string with token replacements
-    """
-    new_str = fmt
-    tokens = re.findall(r'(\<[\p{Lu}\d_]+\>)', fmt)
-    for token in tokens:
-        token_var = token[1:-1].lower()
-        value = kwargs.get(token_var)
-        if not value:
-            raise RuntimeError(f"Token '{token_var}' not found in {kwargs}")
-        new_str = new_str.replace(token, value)
-    return new_str
-
-#############
-# Team Data #
-#############
 
 # mapping from PFR team code to `Team` primary key
 TEAM_CODE = {}
@@ -180,18 +180,6 @@ def parse_game_data(html: str) -> list[dict]:
 def game_data_iter(year: int, data: list[dict]) -> dict:
     """Iterator for games data, yields a dict suitable for feeding into `Game`
     """
-    def week_conv(value: str) -> int:
-        if value.isnumeric():
-            return int(value)
-        if week_val := PLAYOFF_WEEK_MAP.get(value):
-            return week_val.value
-        raise DataError(f"Unknown week value '{value}'")
-
-    def weekday_conv(value: str) -> int:
-        if weekday_val := WEEKDAY_MAP.get(value):
-            return weekday_val.value
-        raise DataError(f"Unknown weekday value '{value}'")
-
     for i, rec in enumerate(data):
         if not rec['game_location'] or rec['game_location'] == 'N':
             home_team = rec['winner']
@@ -224,6 +212,7 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
                      'datetime'     : datetime.combine(rec['game_date'], rec['gametime']),
                      'home_team'    : home_team,
                      'away_team'    : away_team,
+                     'neutral_site' : rec['game_location'] == 'N',
                      'boxscore_url' : rec['boxscore_word'],
                      'winner'       : rec['winner'] if played else None,  # home team, if tie
                      'loser'        : rec['loser']  if played else None,  # away team, if tie
@@ -316,12 +305,12 @@ def line_data_iter(team_code: str, data: list[dict]) -> Game:
         is_home = game.home_team.code == cur_team
         if is_home:
             if game.away_team.code != opp_team:
-                raise DataError(f"Away team conflict ({opp_team}) for game_id {game.game_id}")
+                raise DataError(f"Away team conflict ({opp_team}) for game_id {game.id}")
         else:
             if game.away_team.code != cur_team:
-                raise DataError(f"Away team conflict ({cur_team}) for game_id {game.game_id}")
+                raise DataError(f"Away team conflict ({cur_team}) for game_id {game.id}")
             if game.home_team.code != opp_team:
-                raise DataError(f"Home team conflict ({opp_team}) for game_id {game.game_id}")
+                raise DataError(f"Home team conflict ({opp_team}) for game_id {game.id}")
 
         pt_spread = vegas_line if is_home else -vegas_line
         if game.pt_spread is None:
@@ -332,7 +321,7 @@ def line_data_iter(team_code: str, data: list[dict]) -> Game:
         else:
             if game.pt_spread != pt_spread or game.over_under != over_under:
                 raise DataError(f"Vegas line conflict ({pt_spread}, {over_under}) "
-                                f"for game_id {game.game_id}")
+                                f"for game_id {game.id}")
 
 def parse_line_data(html: str) -> list[dict]:
     lines_meta = PFR_LINES_STATS

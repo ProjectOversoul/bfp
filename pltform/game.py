@@ -28,11 +28,6 @@ class PlayoffWeek(Enum):
     CONF = 300
     SB   = 400
 
-PLAYOFF_WEEK_MAP = {'WildCard':  PlayoffWeek.WC,
-                    'Division':  PlayoffWeek.DIV,
-                    'ConfChamp': PlayoffWeek.CONF,
-                    'SuperBowl': PlayoffWeek.SB}
-
 PLAYOFF_WEEKS = (w.value for w in PlayoffWeek)
 
 # values consistent with `datetime.weekday()`
@@ -44,14 +39,6 @@ class WeekDay(Enum):
     FRI = 4
     SAT = 5
     SUN = 6
-
-WEEKDAY_MAP = {'Mon': WeekDay.MON,
-               'Tue': WeekDay.TUE,
-               'Wed': WeekDay.WED,
-               'Thu': WeekDay.THU,
-               'Fri': WeekDay.FRI,
-               'Sat': WeekDay.SAT,
-               'Sun': WeekDay.SUN}
 
 def WeekStr(week: int) -> str:
     """Return a human-readable string representing the week "number" that is
@@ -83,7 +70,7 @@ class Pick(NamedTuple):
 ############
 
 class GameInfo(NamedTuple):
-    game_id:    int
+    id:         int
     season:     int    # year of season start
     week:       Week   # ordinal within season, or special `PlayoffWeek` value
     day:        WeekDay
@@ -118,13 +105,17 @@ class Game(BaseModel):
     `winner`, `loser`, etc. fields are null)
     """
     # context/schedule info
-    game_id      = AutoField()
     season       = IntegerField()  # year of season start
     week         = IntegerField()  # ordinal within season, or special `PlayoffWeek` value
     day          = IntegerField()  # day of week 0-6 (Mon-Sun)
     datetime     = DateTimeField()
-    home_team    = ForeignKeyField(Team, column_name='home_team', backref='home_games')
-    away_team    = ForeignKeyField(Team, column_name='away_team', backref='away_games')
+    home_team    = ForeignKeyField(Team, column_name='home_team',
+                                   object_id_name='home_team_code',
+                                   backref='home_games')
+    away_team    = ForeignKeyField(Team, column_name='away_team',
+                                   object_id_name='away_team_code',
+                                   backref='away_games')
+    neutral_site = BooleanField()
     boxscore_url = TextField(unique=True)
 
     # enrichment info
@@ -133,8 +124,10 @@ class Game(BaseModel):
 
     # result/outcome info
     winner       = ForeignKeyField(Team, column_name='winner',
+                                   object_id_name='winner_code',
                                    backref='games_won', null=True)   # home team, if tie
     loser        = ForeignKeyField(Team, column_name='loser',
+                                   object_id_name='loser_code',
                                    backref='games_lost', null=True)  # away team, if tie
     is_tie       = BooleanField(null=True)
     home_pts     = IntegerField(null=True)
@@ -213,7 +206,7 @@ class Game(BaseModel):
         be tempted to use completed game data in computing picks--as if Python actually
         had security preventing such shananigans, lol)
         """
-        return GameInfo._make((self.game_id,
+        return GameInfo._make((self.id,
                                self.season,
                                self.week,
                                WeekDay(self.day),
@@ -247,7 +240,7 @@ variables needed to implement certain functions that can operate on either
 robust fashion, since `NamedTuple` doesn't support multiple inheritence.
 
 The required context variables are as follows:
-  game_id:    int  | IntegerField
+  id:         int  | IntegerField
   season:     int  | IntegerField
   week:       Week | IntegerField
   datetime:   datetime

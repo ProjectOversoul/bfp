@@ -417,7 +417,7 @@ class Analysis:
 
     def get_stats(self, team: Team) -> AnlyStats:
         if team not in self.team_stats:
-            raise LogicError(f"Team '{team}' not in game_id {self.game_ctx.game_id}")
+            raise LogicError(f"Team '{team}' not in game_id {self.game_ctx.id}")
         if not self.team_stats[team]:
             # first access to stats locks out changes to filters
             self.frozen = True

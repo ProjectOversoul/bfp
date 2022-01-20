@@ -44,7 +44,6 @@ class Swami(BaseModel):
     instantiation), though a future can be imagined where it may be useful.
     to support `SwamiPicks` for "ext data" and "interactive" swami types!!!
     """
-    swami_id     = AutoField()
     name         = TextField(unique=True)
     about_me     = TextField(null=True)
     swami_type   = TextField(null=True)
@@ -137,12 +136,22 @@ class Swami(BaseModel):
 #############
 
 class SwamiPick(BaseModel):
-    """Represents both current and historical picks for all swami types
+    """Represents both current and historical picks for all swami types.  Note that
+    a record can specify any or all of the individual pick elements (su, ats, etc.).
+
+    TBD (for when human swamis get into the mix): how to aggregate swami picks for a
+    game to represent the most recent intent (while preserving the pick history, for
+    audit trail), including how to null-out a previous pick value!!!
     """
     swami      = ForeignKeyField(Swami)
     game       = ForeignKeyField(Game)
-    su_winner  = ForeignKeyField(Team, backref='su_picks')
-    ats_winner = ForeignKeyField(Team, backref='ats_picks', null=True)
-    pts_margin = IntegerField()   # from winner POV (i.e. must be greater than 0)
-    total_pts  = IntegerField()
-    pick_ts    = DateTimeField()  # timestamp for the pick itself
+    su_winner  = ForeignKeyField(Team, column_name='su_winner',
+                                 object_id_name='su_winner_code',
+                                 backref='su_picks', null=True)
+    ats_winner = ForeignKeyField(Team, column_name='ats_winner',
+                                 object_id_name='ats_winner_code',
+                                 backref='ats_picks', null=True)
+    pts_margin = IntegerField(null=True)  # from winner POV (i.e. must be greater than 0)
+    total_pts  = IntegerField(null=True)
+    confidence = FloatField(null=True)
+    pick_ts    = DateTimeField()          # timestamp managed by framework

@@ -2,6 +2,9 @@
 
 import sys
 
+import regex as re
+from peewee import OperationalError
+
 from .utils import parse_argv
 from .db_core import db, BaseModel
 from .team import Team
@@ -12,7 +15,7 @@ from .swami import Swami, SwamiPick
 # Schema #
 ##########
 
-def create_schema(models: list[BaseModel | str] | str) -> int:
+def create_schema(models: list[BaseModel | str] | str, force=False) -> int:
     """Create tables for specified models.  Note that this does nothing if the underlying
     tables already exist, even if the model schema has changed.
 
@@ -36,7 +39,15 @@ def create_schema(models: list[BaseModel | str] | str) -> int:
 
     if db.is_closed():
         db.connect()
-    db.create_tables(models)
+    for model in models:
+        try:
+            model.create_table(safe=False)
+        except OperationalError as e:
+            if re.fullmatch(r'table "(\w+)" already exists', str(e)) and force:
+                model.drop_table(safe=False)
+                model.create_table(safe=False)
+            else:
+                raise
 
     return 0
 
@@ -50,7 +61,7 @@ def main() -> int:
     Usage: db_admin.py <util_func> [<args> ...]
 
     Functions/usage:
-      - create_schema models=<model,model,...>
+      - create_schema models=<model,model,...> [force=<bool>]
     """
     if len(sys.argv) < 2:
         print(f"Utility function not specified", file=sys.stderr)
