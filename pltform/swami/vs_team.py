@@ -8,7 +8,7 @@ class SwamiVsTeam(SwamiCyberBasic):
     """Rudimentary prediction based on most recent games against a specific
     opponent team
     """
-    def get_pick(self, game_info: GameInfo) -> Pick:
+    def get_pick(self, game_info: GameInfo) -> Pick | None:
         """Implement algorithm to pick winner of games
 
         :param game_info: context/schedule info for the game

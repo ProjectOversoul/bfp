@@ -156,8 +156,15 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
             if not game.neutral_site:
                 raise DataError(f"Teams flipped for non-neutral site, game_id {game.id}")
 
-        # note that "pick'em" may be placed against either team--even though
-        # that is translated into 0.0, use that team as the favorite
+        # Note that "pick'em" may be placed against either team--even though
+        # that is translated into 0.0, use that team as the favorite.
+        #
+        # TODO: we should NOT let a pick'em from this data source get credit
+        # for a straight-up victory in any case, even if the "pseudo-favorite"
+        # wins or there is a tie in the game!!!  In the case of a game tie, I
+        # think it should be tabulated as a "tie" in the pick result as well
+        # (the same as for all other sources of picks)--this is the cost of not
+        # picking a clear winner for the game, LOL!
         if away_data['spread'] is not None:
             winner    = away_team
             my_spread = -away_data['spread']
@@ -176,7 +183,8 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
                            'game':       game,
                            'su_winner':  winner,
                            'ats_winner': ats_winner,
-                           'pts_margin': max(round(margin), 1),
+                           'pt_spread':  my_spread,
+                           'pts_margin': margin,
                            'total_pts':  None,
                            'pick_ts':    datetime.now()}
         yield swami_pick_data
@@ -218,8 +226,11 @@ def parse_predict_data(html: str) -> list[tuple]:
             date_str = h4.string
             date_elems = [x.strip(',.') for x in date_str.split(' ')]
             if len(date_elems) == 3:
+                # the website specifies the year for some dates and not for others
+                # (looks like the difference is before or after the new year), we
+                # don't really care, but we'll normalize for consistency
                 date_elems.append(None)
-            if len(date_elems) != 4:
+            elif len(date_elems) != 4:
                 raise DataError(f"Could not parse date string {date_str}")
             day_of_week, mon, day, year = date_elems
             # NOTE: should be okay to ignore the date elements and just depend on

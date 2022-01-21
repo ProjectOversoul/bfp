@@ -12,7 +12,7 @@ from enum import Enum
 from peewee import query_to_string
 
 from .utils import parse_argv
-from .core import cfg, log, LogicError
+from .core import cfg, log, LogicError, ImplementationError
 from .game import Game, Pick, PLAYOFF_WEEKS, WeekStr
 from .swami import Swami
 
@@ -61,9 +61,9 @@ def compute_scores(game: Game, pick: Pick) -> Scores:
     su_tie   = game.is_tie
     su_score = Score(int(su_win), int(su_loss), int(su_tie))
     if game.pt_spread and pick.ats_winner:
-        # `not game.ats_winner` indicates a push
-        ats_win   = game.ats_winner and pick.ats_winner == game.ats_winner
-        ats_loss  = game.ats_winner and pick.ats_winner != game.ats_winner
+        # `game.ats_winner is None` indicates a push
+        ats_win   = game.ats_winner is not None and pick.ats_winner == game.ats_winner
+        ats_loss  = game.ats_winner is not None and pick.ats_winner != game.ats_winner
         ats_tie   = not game.ats_winner
         ats_score = Score(int(ats_win), int(ats_loss), int(ats_tie))
     else:
@@ -175,6 +175,8 @@ class PoolRun:
             for swami in self.swamis:
                 log.debug(f"Picks for week {week}, game {game.matchup}, swami {swami}")
                 pick = swami.get_pick(game.get_info())
+                if not pick:
+                    continue
                 if swami not in self.week_picks[week]:
                     self.week_picks[week][swami] = {}
                 self.game_picks[game][swami] = pick

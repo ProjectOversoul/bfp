@@ -24,5 +24,11 @@
 #### Future Enhancements ####
 
 - Add nlfswamis-style pool rules
+  - Weekly winners
+  - Regular season winners
+  - Playoff pool
+  - Min/required game picks
+  - Total point tie-breaker
+- Let SwamiCyberBasic use separate analysis for SU and ATS
 - Add confidence levels and betting to competitions
 - Implement SwamiHuman, as part of a web-based pool management platform

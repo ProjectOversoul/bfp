@@ -60,19 +60,33 @@ class SwamiCyberBasic(Swami):
         for crit in self.criteria:
             stat = self.CRIT_MAP[crit]
             if getattr(home_stats, stat) > getattr(away_stats, stat):
-                winner    = home_team
-                margin    = home_stats.pts_margin
-                my_spread = -margin
+                winner     = home_team
+                margin     = home_stats.pts_margin
+                my_spread  = -margin
+                home_fav   = True
                 break
             elif getattr(home_stats, stat) < getattr(away_stats, stat):
-                winner    = away_team
-                margin    = away_stats.pts_margin
-                my_spread = margin
+                winner     = away_team
+                margin     = away_stats.pts_margin
+                my_spread  = margin
+                home_fav   = False
                 break
         else:
             # all else being equal, pick the home team
-            winner = home_team
-            margin = home_stats.pts_margin
+            winner     = home_team
+            margin     = home_stats.pts_margin
+            my_spread  = -margin
+            home_fav   = True
 
-        ats_winner = away_team if my_spread > game_info.pt_spread else home_team
-        return Pick(winner, ats_winner, max(round(margin), 1), round(total_pts))
+        # This is a little messy, but we use `my_spread` as computed above for
+        # the ATS pick, then do some doctoring to ensure that the return value
+        # is consistent with the SU pick in terms of sign and being non-zero;
+        # I think this means it is possible to come up with paradoxical picks,
+        # but that's the way this algorithm works (at least, for now).
+        if game_info.pt_spread is not None:
+            ats_winner = away_team if my_spread > game_info.pt_spread else home_team
+        else:
+            ats_winner = None
+        margin = max(round(margin), 1)
+        my_spread = -margin if home_fav else margin
+        return Pick(winner, ats_winner, my_spread, margin, round(total_pts))

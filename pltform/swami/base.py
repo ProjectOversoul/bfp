@@ -50,7 +50,7 @@ class Swami(BaseModel):
     module_path  = TextField(null=True)
     swami_class  = TextField(null=True)
     swami_params = TextField(null=True)  # json representation of subclass instance vars
-    
+
     class Meta:
         table_function = swami_table
 
@@ -123,11 +123,12 @@ class Swami(BaseModel):
     def __hash__(self) -> int:
         return hash((self.__class__, self.name))
 
-    def get_pick(self, game_info: GameInfo) -> Pick:
+    def get_pick(self, game_info: GameInfo) -> Pick | None:
         """Implement algoritm to pick winner of games
 
         :param game_info: context/schedule info for the game
-        :return: predicted winning team and margin of victory
+        :return: predicted winning team and margin of victory (`None` indicates that
+                 swami does not have sufficient data to make a pick)
         """
         raise ImplementationError("Subclasses must override this method")
 
@@ -151,7 +152,18 @@ class SwamiPick(BaseModel):
     ats_winner = ForeignKeyField(Team, column_name='ats_winner',
                                  object_id_name='ats_winner_code',
                                  backref='ats_picks', null=True)
-    pts_margin = IntegerField(null=True)  # from winner POV (i.e. must be greater than 0)
-    total_pts  = IntegerField(null=True)
+    pt_spread  = FloatField(null=True)  # from home team POV (generally !=0.0)
+    pts_margin = FloatField(null=True)  # from winner POV (generally >0.0)
+    total_pts  = FloatField(null=True)
     confidence = FloatField(null=True)
-    pick_ts    = DateTimeField()          # timestamp managed by framework
+    pick_ts    = DateTimeField()        # timestamp managed by framework
+
+    def get_pick(self) -> Pick:
+        """Return the pure pick information, with context removed.  It is up to
+        the caller to reconcile multiple records for the same parent swami and
+        game (e.g. different timestamps and/or pick fields represented)
+        """
+        # this assumes (make that, *requires*) that `SwamiPick` fields are a
+        # strict superset of `Pick` fields
+        pick_data = (getattr(self, f) for f in Pick._fields)
+        return Pick._make(pick_data)

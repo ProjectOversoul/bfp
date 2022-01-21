@@ -15,6 +15,7 @@ from .core import cfg, DataFile, log, ConfigError, DataError
 from .db_core import db
 from .team import TEAMS
 from .game import PlayoffWeek, WeekDay, Game
+from .swami import Swami, SwamiPick
 
 DATA_SRC_KEY = 'data_sources'
 PFR_SECT_KEY = 'pfr'
@@ -28,6 +29,7 @@ PFR = data_src.get(PFR_SECT_KEY)
 HTML_PARSER    = PFR.get('html_parser')    or 'lxml'
 HTTP_HEADERS   = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
 FETCH_INTERVAL = PFR.get('fetch_interval') or 1.0
+SWAMI_NAME     = PFR.get('swami_name')     or 'Las Vegas'
 
 ################
 # Data Mapping #
@@ -388,6 +390,56 @@ def load_line_data(years: Iterable[int]) -> int:
 
     return 0
 
+def line_picks_iter(swami: Swami, year: int) -> dict:
+    query = (Game
+             .select()
+             .where(Game.season == year, Game.pt_spread.is_null(False))
+             .iterator())
+    for game in query:
+        if game.pt_spread <= 0:
+            winner = game.home_team
+            margin = -game.pt_spread
+        else:
+            winner = game.away_team
+            margin = game.pt_spread
+        if round(margin * 2) != margin * 2:
+            raise DataError(f"Unsupported value ({game.pt_spread}) for `pt_spread`")
+        # note that `pt_spread` and `pts_margin` are allowed to be 0.0 or
+        # some half-point value, since this data source represents an odds
+        # setter (and hence, a benchmark rather than a money competitor)
+        swami_pick_data = {'swami':      swami,
+                           'game':       game,
+                           'su_winner':  winner,
+                           'ats_winner': None,
+                           'pt_spread':  game.pt_spread,
+                           'pts_margin': margin,
+                           'total_pts':  game.over_under,
+                           'pick_ts':    datetime.now()}
+        yield swami_pick_data
+
+def load_line_picks(years: Iterable[int]) -> int:
+    """We can create `SwamiPick` based on the line information in the `game`
+    table (don't have to re-read/-parse the data file).  We will persist the
+    "Las Vegas" pick data rather than derive it in realtime to dissociate the
+    swami from the reference data (since they may actually come from different
+    sources in the future).
+    """
+    if db.is_closed():
+        db.connect()
+
+    swami = Swami.get_by_name(SWAMI_NAME)
+
+    # note that we do a separate atomic batch insert for each year
+    for year in years:
+        picks_data = []
+        for pick_data in line_picks_iter(swami, year):
+            picks_data.append(pick_data)
+        if picks_data:
+            with db.atomic():
+                SwamiPick.insert_many(picks_data).execute()
+
+    return 0
+
 ########
 # Main #
 ########
@@ -402,6 +454,7 @@ def main() -> int:
       - load_game_data years=<years>
       - fetch_line_data years=<years>
       - load_line_data years=<years>
+      - load_line_picks years=<years>
 
     where <years> can be:
       - single year    (e.g. '2021')

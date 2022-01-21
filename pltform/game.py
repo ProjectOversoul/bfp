@@ -59,11 +59,22 @@ def WeekStr(week: int) -> str:
 class Pick(NamedTuple):
     """Pick for an individual game, whether based on external data or computation
     from an internal algorithm
+
+    NOTE: we specify the numeric fields as `float` to support picks based on the Vegas
+    line (or other odds setters, where half-points matter); we expect all other swamis,
+    human or algorithm, to represent pick values as integers.  Odds setter swamis are
+    also allowed to indicate `pt_spread`/`pts_margin` of 0, in the case of a "pick'em".
+
+    There is redundancy between `pt_spread` and `pts_margin`, other than an indication
+    of home vs. away team favorite; for now, we record both for a little convenience
+    in results process and readability--later, if we get rid of one of them, it will
+    definitely be `pts_margin`.
     """
     su_winner:  Team
-    ats_winner: Team | None  # only if `pt_spread` is available
-    pts_margin: int          # must be greater than 0
-    total_pts:  int
+    ats_winner: Team | None   # `None` if `pt_spread` not available
+    pt_spread:  float | None  # from home team POV, non-zero (see NOTE above for exception)
+    pts_margin: float | None  # from winner POV (i.e. "winner by X pts")
+    total_pts:  float | None
 
 ############
 # GameInfo #
@@ -78,7 +89,7 @@ class GameInfo(NamedTuple):
     home_team:    Team
     away_team:    Team
     neutral_site: bool
-    pt_spread:    float | None  # "pick" is represented by 0.0
+    pt_spread:    float | None  # "pick'em" is represented by 0.0
     over_under:   float | None
 
 ###############

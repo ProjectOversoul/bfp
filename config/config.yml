@@ -57,6 +57,8 @@ default:
         game_result:      str
         cover:            str
         ou_result:        str
+      # swami making picks based on line stats
+      swami_name:       Las Vegas
   databases:
     sqlite:
       db_file:   bfp.sqlite
