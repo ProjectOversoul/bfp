@@ -56,8 +56,13 @@ def compute_scores(game: Game, pick: Pick) -> Scores:
     if not game.winner:
         return [Score.empty(), Score.empty()]
 
-    su_win   = not game.is_tie and pick.su_winner == game.winner
-    su_loss  = not game.is_tie and pick.su_winner != game.winner
+    # Pick has to have a non-zero `pts_margin` in order to get credit for a
+    # win, otherwise it is chalked up as a loss (unless the game is tied, in
+    # which case the pick is deemed a push); see LOL in fte.py for rationale.
+    # PERHAPS we should REVISIT, and give "win" credit for a zero-margin pick
+    # that ends in a game tie (wonder if that has ever happened in history)!!!
+    su_win   = not game.is_tie and pick.su_winner == game.winner and pick.pts_margin > 0
+    su_loss  = not game.is_tie and (pick.su_winner != game.winner or pick.pts_margin == 0)
     su_tie   = game.is_tie
     su_score = Score(int(su_win), int(su_loss), int(su_tie))
     if game.pt_spread and pick.ats_winner:
@@ -213,7 +218,7 @@ class PoolRun:
                 self.swami_scores[swami][week][0] += scores[0]
                 self.week_scores[week][swami][0] += scores[0]
                 self.tot_scores[swami][0] += scores[0]
-                if not scores[1].is_empty:
+                if not scores[1].is_empty():
                     self.swami_scores[swami][week][1] += scores[1]
                     self.week_scores[week][swami][1] += scores[1]
                     self.tot_scores[swami][1] += scores[1]
@@ -287,8 +292,8 @@ class PoolRun:
         the weeks in the pool run.
         """
         score_idx = pool_seg.value
-        by_su = sorted(self.tot_scores.items(), key=lambda s: -s[1][0][0])
-        for swami, tot_score in by_su:
+        by_wins = sorted(self.tot_scores.items(), key=lambda s: -s[1][score_idx][0])
+        for swami, tot_score in by_wins:
             week_scores = self.swami_scores[swami]
             wins = {WeekStr(w): s[score_idx][0] for w, s in week_scores.items()}
             tot_wins = self.tot_scores[swami][score_idx][0]
@@ -308,24 +313,48 @@ class PoolRun:
         """The Week Report shows all of the individual picks for each game by
         all of the swamis in the pool.
         """
-        if pool_seg != PoolSeg.SU:
+        if pool_seg == PoolSeg.SU:
+            winner_row = {g.matchup: (g.winner if not g.is_tie else "-tie-") if g.winner else '-tbd-'
+                          for g in self.week_games[week]}
+            yield {SWAMI_COL: "Winner"} | winner_row
+            winners = set(g.winner for g in self.week_games[week] if not g.is_tie)
+            total_picks = Counter()
+            winning_picks = Counter()
+            for swami, game_picks in self.week_picks[week].items():
+                picks = {}
+                for g, p in game_picks.items():
+                    win_ind = '*' if p.su_winner in winners else ''
+                    picks[g.matchup] = p.su_winner.code + win_ind
+                    total_picks[g.matchup] += 1
+                    winning_picks[g.matchup] += int(bool(win_ind))
+                yield {SWAMI_COL: swami.name} | picks
+            pick_pct = {key: f"{wins / total_picks[key] * 100.0:.0f}%"
+                        for key, wins in winning_picks.items()}
+            yield {SWAMI_COL: WIN_PCT} | pick_pct
+        elif pool_seg == PoolSeg.ATS:
+            winner_row = {g.matchup: g.ats_winner if g.ats_winner
+                          else ("-push-" if g.is_ats_push else "-n/a-")
+                          for g in self.week_games[week]}
+            yield {SWAMI_COL: "Winner"} | winner_row
+            winners = set(g.ats_winner for g in self.week_games[week] if g.ats_winner)
+            total_picks = Counter()
+            winning_picks = Counter()
+            for swami, game_picks in self.week_picks[week].items():
+                picks = {}
+                for g, p in game_picks.items():
+                    if not p.ats_winner:
+                        picks[g.matchup] = ''
+                        continue
+                    win_ind = '*' if p.ats_winner in winners else ''
+                    picks[g.matchup] = p.ats_winner.code + win_ind
+                    total_picks[g.matchup] += 1
+                    winning_picks[g.matchup] += int(bool(win_ind))
+                yield {SWAMI_COL: swami.name} | picks
+            pick_pct = {key: f"{wins / total_picks[key] * 100.0:.0f}%"
+                        for key, wins in winning_picks.items()}
+            yield {SWAMI_COL: WIN_PCT} | pick_pct
+        else:
             raise ImplementationError(f"Segment {pool_seg} not yet implemented")
-        winner_row = {g.matchup: (g.winner if not g.is_tie else "-tie-") if g.winner else '-tbd-'
-                      for g in self.week_games[week]}
-        yield {SWAMI_COL: "Winner"} | winner_row
-        winners = set(g.winner for g in self.week_games[week] if not g.is_tie)
-        winning_picks = Counter()
-        for swami, game_picks in self.week_picks[week].items():
-            picks = {}
-            for g, p in game_picks.items():
-                win_ind = '*' if p.su_winner in winners else ''
-                picks[g.matchup] = p.su_winner.code + win_ind
-                winning_picks[g.matchup] += int(bool(win_ind))
-            yield {SWAMI_COL: swami.name} | picks
-        nswamis = len(self.week_picks[week])
-        pick_pct = {key: f"{wins / nswamis * 100.0:.0f}%"
-                    for key, wins in winning_picks.items()}
-        yield {SWAMI_COL: WIN_PCT} | pick_pct
 
 ##############
 # PoolResult #
@@ -439,7 +468,8 @@ def main() -> int:
     pool = Pool(name)
     run = pool.get_run(season, weeks)
     run.run()
-    run.print_results_md(PoolSeg.SU)
+    run.print_results_md(PoolSeg.ATS)
+    #run.print_results_md(PoolSeg.SU)
     pool.print_swami_bios_md()
 
     return 0

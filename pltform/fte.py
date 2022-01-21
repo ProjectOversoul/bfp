@@ -159,11 +159,11 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
         # Note that "pick'em" may be placed against either team--even though
         # that is translated into 0.0, use that team as the favorite.
         #
-        # TODO: we should NOT let a pick'em from this data source get credit
+        # NOTE: we should NOT let a pick'em from this data source get credit
         # for a straight-up victory in any case, even if the "pseudo-favorite"
         # wins or there is a tie in the game!!!  In the case of a game tie, I
         # think it should be tabulated as a "tie" in the pick result as well
-        # (the same as for all other sources of picks)--this is the cost of not
+        # (same as for all other sources of picks)--this is the cost of not
         # picking a clear winner for the game, LOL!
         if away_data['spread'] is not None:
             winner    = away_team

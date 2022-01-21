@@ -196,6 +196,10 @@ class Game(BaseModel):
         return self.home_team if self.home_vs_spread < 0.0 else self.away_team
 
     @property
+    def is_ats_push(self) -> bool:
+        return self.home_vs_spread == 0.0
+
+    @property
     def home_vs_spread(self) -> float | None:
         if self.pt_spread is None:
             return None

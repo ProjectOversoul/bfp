@@ -352,5 +352,5 @@ from [Pro Football Reference](https://www.pro-football-reference.com/).
 
 The author would like to acknowledge Mike Grau, who ran a great football pool for many
 years.  The Pool component of this project draws inspiration from the format established
-by the (now defunct) nflswamis.com site.  I don't know if Mike would approve of humans
+by his (now defunct) nflswamis.com site.  I don't know if Mike would approve of humans
 delegating their picks to computational algorithms.

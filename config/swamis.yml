@@ -45,12 +45,12 @@ default:
       swami_class:   SwamiHuman
       swami_params:
     Las Vegas:
-      about_me:
+      about_me:      "Picks based on Las Vegas line (no ATS for obvious reasons)"
       module_path:   pltform.swami
       swami_class:   SwamiLasVegas
       swami_params:
     FiveThirtyEight:
-      about_me:
+      about_me:      "Picks made by fivethirtyeight.com website"
       module_path:   pltform.swami
       swami_class:   SwamiFiveThirtyEight
       swami_params:
