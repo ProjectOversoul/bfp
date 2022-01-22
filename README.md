@@ -40,17 +40,29 @@ A "pick" consists of four components:
 - Points margin
 - Total points
 
-The actual data structure returned by `get_pick()` looks like this:
+The actual data structure returned by `get_pick()` looks like this (with some additional
+documentation included):
 
 ```python
 class Pick(NamedTuple):
     """Pick for an individual game, whether based on external data or computation
     from an internal algorithm
+
+    NOTE: we specify the numeric fields as `float` to support picks based on the Vegas
+    line (or other odds setters, where half-points matter); we expect all other swamis,
+    human or algorithm, to represent pick values as integers.  Odds setter swamis are
+    also allowed to indicate `pt_spread`/`pts_margin` of 0, in the case of a "pick'em".
+
+    There is redundancy between `pt_spread` and `pts_margin`, other than an indication
+    of home vs. away team favorite; for now, we record both for a little convenience
+    in results process and readability--later, if we get rid of one of them, it will
+    definitely be `pts_margin`.
     """
     su_winner:  Team
-    ats_winner: Team | None  # only if `pt_spread` is available
-    pts_margin: int          # must be greater than 0
-    total_pts:  int
+    ats_winner: Team | None   # `None` if `pt_spread` not available
+    pt_spread:  float | None  # from home team POV, non-zero (see NOTE above for exception)
+    pts_margin: float | None  # from winner POV (i.e. "winner by X pts")
+    total_pts:  float | None
 ```
 
 It is up to individual pools to determine how the various elements of all of the game
@@ -151,11 +163,12 @@ analysis filters described below.
 
 #### External Data Swamis ####
 
-There are currently two External Data Swamis planned (though not yet implemented):
+There are two External Data Swamis currently implemented:
 
-- `SwamiLasVegas` - Used to source current and historical odds data (spreads and
-  over-unders), as well as serve as a baseline competitor in straight-up and points-margin
-  pool competitions.
+- `SwamiLasVegas` - Driven by the data source used for odds data (spreads and
+  over-unders), serves as a baseline competitor for straight-up and points-margin pool
+  picks.  Note that this Swami does not make against-the-spread picks when participating
+  in pools (for obvious reasons).
 - `SwamiFiveThirtyEight` - The gold-standard for data-driven predictions.  One of the
   inspirations for this overall project is TK's bold pronouncement that his algorithms can
   beat FiveThirtyEight.  We'll see.
@@ -200,7 +213,7 @@ follows (all subclassed from `AnlyFilter`):
 | `AnlyFilterDayOfWeek`* | Day of the week (e.g. Thursday, Sunday, Monday) |
 | `AnlyFilterRecord`* | Games against teams with specified season record (range) |
 | `AnlyFilterRanking`* | Games against teams with specified team ranking (e.g. top 5 total offense) |
-| `AnlyFilterSpreaad`* | Games with specified points spread (e.g. favored by more than 10) |
+| `AnlyFilterSpread`* | Games with specified points spread (e.g. favored by more than 10) |
 | `AnlyFilterOutcome`* | Games with specified outcome (e.g. only wins, losses, or ties) |
 | `AnlyFilterStatMargin`* | Games with specified stats margin (e.g. won by less than 7) |
 
@@ -222,7 +235,7 @@ following table describes the intended use cases, which must be implemented with
 | `AnlyFilterDayOfWeek` | Day of the week, similar to current matchup (e.g. Monday Night game) |
 | `AnlyFilterRecord` | Games against teams with record similar to current opponent (specify similarity range) |
 | `AnlyFilterRanking` | Games against teams with team rankings similar to current opponent (specify similarity range) |
-| `AnlyFilterSpreaad` | Games with points spread similar to current odds (specify similarity range)
+| `AnlyFilterSpread` | Games with points spread similar to current odds (specify similarity range)
 
 #### Statistics ####
 
