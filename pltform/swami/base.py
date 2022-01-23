@@ -140,6 +140,18 @@ class SwamiPick(BaseModel):
     """Represents both current and historical picks for all swami types.  Note that
     a record can specify any or all of the individual pick elements (su, ats, etc.).
 
+    The "confidence" values for the pick can be used by either the swami class or the
+    pool framework to determine which games and/or the number of games to submit to a
+    weekly sub-pool.  Typically, the minimum number of games (if less than "all") will
+    be chosen (in descending confidence order), along with any others at the same level
+    as the lowest rank included.  However, a swami subclass may choose to override the
+    default logic and select as many games as desired (e.g. with the season sub-pool
+    standing in "mind").
+
+    See the docstring for the `Pick` class for a little bit of subtlety (or whatever
+    you want to call it) around the workings of--and relationship between--`pt_spread`
+    and `pts_margin`.
+
     TBD (for when human swamis get into the mix): how to aggregate swami picks for a
     game to represent the most recent intent (while preserving the pick history, for
     audit trail), including how to null-out a previous pick value!!!
@@ -155,7 +167,8 @@ class SwamiPick(BaseModel):
     pt_spread  = FloatField(null=True)  # from home team POV (generally !=0.0)
     pts_margin = FloatField(null=True)  # from winner POV (generally >0.0)
     total_pts  = FloatField(null=True)
-    confidence = FloatField(null=True)
+    su_conf    = FloatField(null=True)  # confidence for `su_winner`
+    ats_conf   = FloatField(null=True)  # confidence for `ats_winner`
     pick_ts    = DateTimeField()        # timestamp managed by framework
 
     def get_pick(self) -> Pick:

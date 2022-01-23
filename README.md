@@ -53,10 +53,10 @@ class Pick(NamedTuple):
     human or algorithm, to represent pick values as integers.  Odds setter swamis are
     also allowed to indicate `pt_spread`/`pts_margin` of 0, in the case of a "pick'em".
 
-    There is redundancy between `pt_spread` and `pts_margin`, other than an indication
-    of home vs. away team favorite; for now, we record both for a little convenience
-    in results process and readability--later, if we get rid of one of them, it will
-    definitely be `pts_margin`.
+    There is redundancy between `pt_spread` and `pts_margin`, with the only difference
+    being an indication of home vs. away team favorite; for now, we record both for a
+    slight bit of convenience in results processing and perhaps readability.  LATER:
+    if we get rid of one of them, it will definitely be `pts_margin`!
     """
     su_winner:  Team
     ats_winner: Team | None   # `None` if `pt_spread` not available
@@ -299,7 +299,7 @@ class GameInfo(NamedTuple):
     home_team:    Team
     away_team:    Team
     neutral_site: bool
-    pt_spread:    float | None  # "pick" is represented by 0.0
+    pt_spread:    float | None  # "pick'em" is represented by 0.0
     over_under:   float | None
 ```
 

@@ -1,7 +1,22 @@
 ---
 default:
+  base_pool:
+    params:
+      # SU and ATS rules only apply to regular season
+      su_fmt:        su_wins
+      su_req_picks:  all
+      su_tb:         total_pts_margin
+      ats_fmt:       ats_win_pct
+      ats_min_picks: 5
+      ats_req_picks: mnf
+      ats_tb:        total_pts_margin
+      playoff_fmt:   su_wins + ats_wins
+      playoff_tb:    none
   pools:
     Pool A:
+      description:   Default pool with all cyber and ext_data swamis
+      params:
+        # base_pool param overrides go here
       swamis:
         - Rudi 1
         - Rudi 2

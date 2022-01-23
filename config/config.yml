@@ -16,7 +16,6 @@ default:
       fetch_interval:   1.0
       predict_url:      https://projects.fivethirtyeight.com/<YEAR>-nfl-predictions/games/
       predict_file:     projects.fivethirtyeight.com_<YEAR>-nfl-predictions_games.html
-      #predict_file:     <YEAR> NFL Predictions _ FiveThirtyEight.html
       predict_stats:
         team:           team
         spread:         spread
