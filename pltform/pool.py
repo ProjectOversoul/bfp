@@ -4,7 +4,7 @@
 import sys
 from os import environ
 from typing import TextIO
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from collections import Counter
 from itertools import groupby
 from enum import Enum
@@ -121,6 +121,13 @@ class SubPool:
         self.pool = parent_pool
         self.sp_type = sp_type
 
+    def week_iter(self) -> Iterator[int]:
+        return (w for w in self.pool.week_scores)
+
+    def swami_scores_iter(self, swami: Swami) -> Iterator[tuple[int, Scores]]:
+        week_scores = self.pool.swami_scores[swami]
+        return (ws for ws in week_scores.items())
+
     def get_winner(self) -> list[Swami]:
         """Not a pretty way to do this, but oh well...(only works for SU or ATS)
 
@@ -160,7 +167,7 @@ class SubPool:
             iter_data = (str(report_data.get(key)) for key in header)
             print("\t".join(iter_data), file=file)
 
-        for week in pool.week_scores:
+        for week in self.week_iter():
             subtitle = f"{WeekStr(week)} ({SubPoolStr(self.sp_type)})"
             print(f"\n{subtitle}\n{len(subtitle) * '-'}")
             header = self.week_report_hdr(week)
@@ -187,7 +194,7 @@ class SubPool:
             iter_data = (str(report_data.get(key)) for key in header)
             print("| ", " | ".join(iter_data), " |", file=file)
 
-        for week in pool.week_scores:
+        for week in self.week_iter():
             print(f"\n### {WeekStr(week)} ({SubPoolStr(self.sp_type)}) ###")
             header = self.week_report_hdr(week)
             print("| ", " | ".join(header), " |", file=file)
@@ -201,7 +208,7 @@ class SubPool:
         the data returned by `season_report_iter()`.
         """
         pool = self.pool
-        week_names = [WeekStr(w) for w in pool.week_scores]
+        week_names = [WeekStr(w) for w in self.week_iter()]
         return [SWAMI_COL] + week_names + [TOTAL_COL, WIN_PCT]
 
     def season_report_iter(self) -> dict[str, int]:
@@ -212,8 +219,7 @@ class SubPool:
         score_idx = self.sp_type.value
         by_wins = sorted(pool.tot_scores.items(), key=lambda s: -s[1][score_idx][0])
         for swami, tot_score in by_wins:
-            week_scores = pool.swami_scores[swami]
-            wins = {WeekStr(w): s[score_idx][0] for w, s in week_scores.items()}
+            wins = {WeekStr(w): s[score_idx][0] for w, s in self.swami_scores_iter(swami)}
             tot_wins = pool.tot_scores[swami][score_idx][0]
             tot_ties = pool.tot_scores[swami][score_idx][2]
             tot_picks = pool.tot_scores[swami][score_idx].total() or -1
@@ -226,12 +232,22 @@ class SubPool:
         """
         pool = self.pool
         matchups = [g.matchup for g in pool.week_games[week]]
-        return [SWAMI_COL] + matchups
+        return [SWAMI_COL] + matchups + [TOTAL_COL, WIN_PCT]
 
     def week_report_iter(self, week: int) -> dict[str, int]:
         raise ImplementationError("Must be implemented by subclasses")
 
 class SubPoolSU(SubPool):
+    def week_iter(self) -> Iterator[int]:
+        return (w for w in self.pool.week_scores if w < 100)
+
+    def week_scores_iter(self) -> Iterator[tuple[int, Scores]]:
+        return (ws for ws in self.pool.week_scores if ws[0] < 100)
+
+    def swami_scores_iter(self, swami: Swami) -> Iterator[tuple[int, Scores]]:
+        week_scores = self.pool.swami_scores[swami]
+        return (ws for ws in week_scores.items() if ws[0] < 100)
+
     def week_report_iter(self, week: int) -> dict[str, int]:
         """The Week Report shows all of the individual picks for each game by all
         of the swamis in the pool.
@@ -241,23 +257,45 @@ class SubPoolSU(SubPool):
         winner_row = {g.matchup: g.winner if g.winner and not g.is_tie
                       else ("-tie-" if g.is_tie else "-tbd-")
                       for g in pool.week_games[week]}
-        yield {SWAMI_COL: "Winner"} | winner_row
+        yield {SWAMI_COL: "Winner"} | winner_row | {TOTAL_COL: '', WIN_PCT: ''}
+
         winners = set(g.winner for g in pool.week_games[week] if not g.is_tie)
         total_picks = Counter()
         winning_picks = Counter()
         for swami, game_picks in pool.week_picks[week].items():
             picks = {}
+            swami_wins  = 0
+            swami_ties  = 0
+            swami_total = 0
             for g, p in game_picks.items():
-                win_ind = '*' if p.su_winner in winners else ''
-                picks[g.matchup] = p.su_winner.code + win_ind
+                win_ind = ''
+                swami_total += 1
                 total_picks[g.matchup] += 1
-                winning_picks[g.matchup] += int(bool(win_ind))
-            yield {SWAMI_COL: swami.name} | picks
+                if p.su_winner in winners:
+                    win_ind = '*'
+                    swami_wins += 1
+                    winning_picks[g.matchup] += 1
+                elif g.is_tie:
+                    swami_ties += 1
+                picks[g.matchup] = p.su_winner.code + win_ind
+            win_pct = f"{(swami_wins + swami_ties / 2.0) / swami_total * 100.0:.0f}%"
+            yield {SWAMI_COL: swami.name} | picks | {TOTAL_COL: swami_wins, WIN_PCT: win_pct}
+
         pick_pct = {key: f"{wins / total_picks[key] * 100.0:.0f}%"
                     for key, wins in winning_picks.items()}
-        yield {SWAMI_COL: WIN_PCT} | pick_pct
+        yield {SWAMI_COL: WIN_PCT} | pick_pct | {TOTAL_COL: '', WIN_PCT: ''}
 
 class SubPoolATS(SubPool):
+    def week_iter(self) -> Iterator[int]:
+        return (w for w in self.pool.week_scores if w < 100)
+
+    def week_scores_iter(self) -> Iterator[int]:
+        return (ws for ws in self.pool.week_scores if ws[0] < 100)
+
+    def swami_scores_iter(self, swami: Swami) -> Iterator[tuple[int, Scores]]:
+        week_scores = self.pool.swami_scores[swami]
+        return (ws for ws in week_scores.items() if ws[0] < 100)
+
     def week_report_iter(self, week: int) -> dict[str, int]:
         """The Week Report shows all of the individual picks for each game by all
         of the swamis in the pool.
@@ -286,6 +324,16 @@ class SubPoolATS(SubPool):
         yield {SWAMI_COL: WIN_PCT} | pick_pct
 
 class SubPoolPlayoff(SubPool):
+    def week_iter(self) -> Iterator[int]:
+        return (w for w in self.pool.week_scores if w >= 100)
+
+    def week_scores_iter(self) -> Iterator[int]:
+        return (ws for ws in self.pool.week_scores if ws[0] >= 100)
+
+    def swami_scores_iter(self, swami: Swami) -> Iterator[tuple[int, Scores]]:
+        week_scores = self.pool.swami_scores[swami]
+        return (ws for ws in week_scores.items() if ws[0] >= 100)
+
     def get_winner(self) -> list[Swami]:
         raise ImplementationError("Not yet implemented")
 
@@ -319,7 +367,6 @@ class Pool:
     """
     name:         str
     season:       int
-    weeks:        list[int] | None  # `None` means entire season
     swamis:       dict[str, Swami]  # indexed by name (do we need to do this???)
     sub_pools:    dict[SubPoolType, SubPool]
 
@@ -330,13 +377,10 @@ class Pool:
     swami_scores: dict[Swami, WeekScores]
     tot_scores:   dict[Swami, Scores]
 
-    def __init__(self, name: str, season: int, weeks: Iterable[int] = None, **kwargs):
+    def __init__(self, name: str, season: int, **kwargs):
         """Note that the swamis for this pool are generally specified in the
         config file entry, but may be overridden in `kwargs`
         """
-        if weeks is not None:
-            weeks = list(weeks)
-
         pools = cfg.config('pools')
         if name not in pools:
             raise RuntimeError(f"Pool '{name}' is not known")
@@ -346,7 +390,6 @@ class Pool:
 
         self.name      = name
         self.season    = season
-        self.weeks     = weeks
         self.swamis    = {}
         self.sub_pools = {}
         # idx is used below as a count of the inbound swamis
@@ -367,12 +410,12 @@ class Pool:
         self.swami_scores = {}
         self.tot_scores   = {}
 
-    def run(self) -> None:
+    def run(self, weeks: Iterable[int] = None) -> None:
         """Tabulate picks for the season from the competing swamis
         """
         query = Game.select().where(Game.season == self.season)
-        if self.weeks:
-            query = query.where(Game.week << self.weeks)
+        if weeks:
+            query = query.where(Game.week << list(weeks))
         query = query.order_by(Game.season, Game.week, Game.datetime)
 
         log.debug("Pool games SQL: " + query_to_string(query))
@@ -495,8 +538,8 @@ def main() -> int:
     else:
         weeks = None
 
-    pool = Pool(name, season, weeks)
-    pool.run()
+    pool = Pool(name, season)
+    pool.run(weeks)
     su = pool.get_sub_pool(SubPoolType.SU)
     su.print_results_md()
     #ats = pool.get_sub_pool(SubPoolType.ATS)

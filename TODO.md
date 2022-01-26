@@ -1,6 +1,9 @@
 ### TODO Items/Ideas ###
 
 #### Basic Platform ####
+- Complete regular season vs. playoff sub-pool formats
+  - Fix documentation for `pool` module
+- Show weekly winners in pool repoting
 - Test data and test cases for:
   - Analysis framework and filters
   - Pool results aggregation
