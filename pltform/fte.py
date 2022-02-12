@@ -131,6 +131,7 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
     so we leave that pick field empty.  In the future, the `chance` stat can be used
     (along with `spread`) to determine level of confidence/ranking of picks.
     """
+    now = datetime.now()
     for i, rec in enumerate(data):
         week      = rec[0]
         home_data = rec[1][1]
@@ -186,7 +187,7 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
                            'pt_spread':  my_spread,
                            'pts_margin': margin,
                            'total_pts':  None,
-                           'pick_ts':    datetime.now()}
+                           'pick_ts':    now}
         yield swami_pick_data
 
 def parse_predict_data(html: str) -> list[tuple]:
@@ -208,9 +209,9 @@ def parse_predict_data(html: str) -> list[tuple]:
         team_data = []
         for tr in table('tr'):
             row_data = {}
-            for col_key in field_proc:
+            for col_key, proc in field_proc.items():
                 value = tr.select(f'td.{col_key}')[0].string
-                row_data[col_key] = None if value is None else field_proc[col_key](value.strip())
+                row_data[col_key] = None if value is None else proc(value.strip())
             team_data.append(row_data)
         if len(team_data) != 2:
             raise DataError(f"Expected two team rows, got {len(team_data)}")

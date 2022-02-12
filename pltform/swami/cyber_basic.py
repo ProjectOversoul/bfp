@@ -89,4 +89,4 @@ class SwamiCyberBasic(Swami):
             ats_winner = None
         margin = max(round(margin), 1)
         my_spread = -margin if home_fav else margin
-        return Pick(winner, ats_winner, my_spread, margin, round(total_pts))
+        return Pick(winner, ats_winner, my_spread, margin, round(total_pts), None, None)

@@ -441,24 +441,23 @@ class Pool:
         log.debug("Pool games SQL: " + query_to_string(query))
         games = query.execute()
 
-        # note, could use `itertools.groupby` on week
-        for game in games:
-            week = game.week
+        for week, wk_games in groupby(games, key=attrgetter('week')):
             if week not in self.week_games:
                 self.week_games[week] = []
-            self.week_games[week].append(game)
-            self.game_picks[game] = {}
-            if week not in self.week_picks:
-                self.week_picks[week] = {}
-            for swami in self.swamis.values():
-                log.debug(f"Picks for week {week}, game {game.matchup}, swami {swami}")
-                pick = swami.get_pick(game.get_info())
-                if not pick:
-                    continue
-                if swami not in self.week_picks[week]:
-                    self.week_picks[week][swami] = {}
-                self.game_picks[game][swami] = pick
-                self.week_picks[week][swami][game] = pick
+            for game in wk_games:
+                self.week_games[week].append(game)
+                self.game_picks[game] = {}
+                if week not in self.week_picks:
+                    self.week_picks[week] = {}
+                for swami in self.swamis.values():
+                    log.debug(f"Picks for week {week}, game {game.matchup}, swami {swami}")
+                    pick = swami.get_pick(game.get_info())
+                    if not pick:
+                        continue
+                    if swami not in self.week_picks[week]:
+                        self.week_picks[week][swami] = {}
+                    self.game_picks[game][swami] = pick
+                    self.week_picks[week][swami][game] = pick
 
         if not self.game_picks:
             raise RuntimeError("No games selected")

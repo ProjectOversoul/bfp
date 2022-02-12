@@ -75,6 +75,8 @@ class Pick(NamedTuple):
     pt_spread:  float | None  # from home team POV, non-zero (see NOTE above for exception)
     pts_margin: float | None  # from winner POV (i.e. "winner by X pts")
     total_pts:  float | None
+    su_conf:    float | None
+    ats_conf:   float | None
 
 ############
 # GameInfo #

@@ -166,6 +166,7 @@ def parse_game_data(html: str) -> list[dict]:
         row_data = {}
         for j, col in enumerate(row.find_all(['th', 'td'])):
             col_key = col['data-stat']
+            proc = field_proc[col_key]
             # use href under `a` tag, if it exists (e.g. for teams)
             if anchor := col.find('a') :
                 value = anchor['href']
@@ -174,7 +175,7 @@ def parse_game_data(html: str) -> list[dict]:
             # if this is a special formatting row, bail (and skip row below)
             if j == 0 and value is None:
                 break
-            row_data[col_key] = None if value is None else field_proc[col_key](value)
+            row_data[col_key] = None if value is None else proc(value)
         # broke from inner loop (no data in row), skip it
         if j == 0:
             continue
@@ -395,6 +396,7 @@ def line_picks_iter(swami: Swami, year: int) -> dict:
              .select()
              .where(Game.season == year, Game.pt_spread.is_null(False))
              .iterator())
+    now = datetime.now()
     for game in query:
         if game.pt_spread <= 0:
             winner = game.home_team
@@ -414,7 +416,7 @@ def line_picks_iter(swami: Swami, year: int) -> dict:
                            'pt_spread':  game.pt_spread,
                            'pts_margin': margin,
                            'total_pts':  game.over_under,
-                           'pick_ts':    datetime.now()}
+                           'pick_ts':    now}
         yield swami_pick_data
 
 def load_line_picks(years: Iterable[int]) -> int:
