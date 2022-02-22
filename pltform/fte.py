@@ -187,6 +187,8 @@ def predict_data_iter(swami: Swami, year: int, data: list[tuple]) -> dict:
                            'pt_spread':  my_spread,
                            'pts_margin': margin,
                            'total_pts':  None,
+                           'su_conf':    margin,
+                           'ats_conf':   abs(my_spread - game.pt_spread),
                            'pick_ts':    now}
         yield swami_pick_data
 

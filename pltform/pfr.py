@@ -436,6 +436,8 @@ def line_picks_iter(swami: Swami, year: int) -> dict:
                            'pt_spread':  game.pt_spread,
                            'pts_margin': margin,
                            'total_pts':  game.over_under,
+                           'su_conf':    margin,
+                           'ats_conf':   None,
                            'pick_ts':    now}
         yield swami_pick_data
 

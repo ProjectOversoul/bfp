@@ -13,26 +13,26 @@ from ..db_core import db
 from ..game import Game
 from . import Swami, SwamiPick
 
-############
-# get_pick #
-############
+#############
+# make_pick #
+#############
 
-def get_pick(swami_name: str, game_id: int) -> int:
+def make_pick(swami_name: str, game_id: int) -> int:
     """Print swami pick for specified game (simple test function)
     """
     swami = Swami.get_by_name(swami_name)
     game = Game.get_by_id(game_id)
-    team, _, margin, total = swami.get_pick(game)
+    pick = swami.make_pick(game.get_info())
     info = game.get_info()
     results = game.get_results()
 
     pp_params = {'sort_dicts': False}
     print("Game Info:\n", pformat(info._asdict(), **pp_params))
-    print(f"\nYour pick: {team} by {margin}")
+    print("\nYour pick:\n", pformat(pick._asdict(), **pp_params))
     print("\nResults:\n", pformat(results._asdict(), **pp_params))
 
     outcome = ("wrong", "right")
-    print(f"\nYou were {outcome[int(team == results.winner)]}!")
+    print(f"\nYou were {outcome[int(pick.su_winner == results.winner)]}!")
     return 0
 
 #############
@@ -106,7 +106,7 @@ def main() -> int:
     Usage: python -m swami <util_func> [<args> ...]
 
     Functions/usage:
-      - get_pick <swami_name> <game_id>
+      - make_pick <swami_name> <game_id>
       - load_data
       - load_picks seasons=<seasons> [swamis=<swami>[,...]]
     """
