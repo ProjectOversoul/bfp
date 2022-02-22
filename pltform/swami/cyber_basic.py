@@ -30,11 +30,20 @@ class SwamiCyberBasic(Swami):
             if crit not in self.CRIT_MAP:
                 raise ConfigError(f"Invalid criterion '{crit}' in `criteria`")
 
-    def cyber_pick(self, game_info: GameInfo, filters: list[AbstrAnlyFilter] = None) -> Pick:
-        """Common pick logic for CyberBasic Swamis.  Applies the logic for configured
-        number of games or seasons, as well as selection `criteria`.
+    def make_pick(self, game_info: GameInfo) -> Pick | None:
+        """Implement algorithm to pick winner of games
 
-        :param game_info: passed through from `get_pick()`
+        :param game_info: context/schedule info for the game
+        :return: predictions and confidence for both SU and ATS
+        """
+        raise ImplementationError("Subclasses must override this method")
+
+    def cyber_pick(self, game_info: GameInfo, filters: list[AbstrAnlyFilter] = None) -> Pick:
+        """Common pick logic for CyberBasic Swamis, typically called from subclass `make_pick`
+        implementations.  Applies the logic for configured number of games or seasons, as well
+        as selection `criteria`.
+
+        :param game_info: passed through from `make_pick()`
         :param filters: subclass-specific filters (applied on top of common logic)
         :return: pick based on first criterion to resolve
         """

@@ -123,14 +123,25 @@ class Swami(BaseModel):
     def __hash__(self) -> int:
         return hash((self.__class__, self.name))
 
-    def get_pick(self, game_info: GameInfo) -> Pick | None:
-        """Implement algoritm to pick winner of games
+    def get_pick(self, game: Game) -> Pick | None:
+        """Return swami's pick for specified game.  For now, this assumes that picks
+        have already been loaded into the `swami_pick` table, but later, this call (or
+        another utility call) can solicit picks if not already made.
 
-        :param game_info: context/schedule info for the game
-        :return: predicted winning team and margin of victory (`None` indicates that
-                 swami does not have sufficient data to make a pick)
+        :param game: game data (actually, only interested in `id`)
+        :return: predictions and confidence for both SU and ATS
         """
-        raise ImplementationError("Subclasses must override this method")
+        try:
+            swami_pick = (SwamiPick
+                          .select()
+                          .where(SwamiPick.swami_id == self.id,
+                                 SwamiPick.game_id == game.id)
+                          .order_by(SwamiPick.pick_ts.desc())
+                          .get())
+        except DoesNotExist:
+            return None
+        pick = swami_pick.get_pick()
+        return pick
 
 #############
 # SwamiPick #

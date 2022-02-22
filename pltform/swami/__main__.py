@@ -22,7 +22,7 @@ def get_pick(swami_name: str, game_id: int) -> int:
     """
     swami = Swami.get_by_name(swami_name)
     game = Game.get_by_id(game_id)
-    team, _, margin, total = swami.get_pick(game.get_info())
+    team, _, margin, total = swami.get_pick(game)
     info = game.get_info()
     results = game.get_results()
 
@@ -72,7 +72,7 @@ def swami_picks_iter(swami: Swami, season: int) -> dict:
              .iterator())
     now = datetime.now()
     for game in query:
-        pick = swami.get_pick(game.get_info())
+        pick = swami.make_pick(game.get_info())
         swami_pick_data = {'swami':   swami,
                            'game':    game,
                            'pick_ts': now}

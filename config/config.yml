@@ -21,7 +21,7 @@ default:
         spread:         spread
         chance:         pct
         score:          int
-      swami_name:       FiveThirtyEight
+      swami_name:       '538'
     pfr:
       full_name:        Pro Football Reference
       html_parser:      lxml
@@ -57,7 +57,7 @@ default:
         cover:            str
         ou_result:        str
       # swami making picks based on line stats
-      swami_name:       Las Vegas
+      swami_name:       Vegas
   databases:
     sqlite:
       db_file:   bfp.sqlite

@@ -29,7 +29,7 @@ PFR = data_src.get(PFR_SECT_KEY)
 HTML_PARSER    = PFR.get('html_parser')    or 'lxml'
 HTTP_HEADERS   = PFR.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
 FETCH_INTERVAL = PFR.get('fetch_interval') or 1.0
-SWAMI_NAME     = PFR.get('swami_name')     or 'Las Vegas'
+SWAMI_NAME     = PFR.get('swami_name')     or 'Vegas'
 
 ################
 # Data Mapping #
@@ -231,6 +231,21 @@ def game_data_iter(year: int, data: list[dict]) -> dict:
                      'away_tos'     : away_tos}
         yield game_data
 
+GAME_UPSERT_TARG = [Game.season,
+                    Game.week,
+                    Game.home_team,
+                    Game.away_team]
+
+GAME_UPSERT_COLS = [Game.winner,
+                    Game.loser,
+                    Game.is_tie,
+                    Game.home_pts,
+                    Game.home_yds,
+                    Game.home_tos,
+                    Game.away_pts,
+                    Game.away_yds,
+                    Game.away_tos]
+
 def load_game_data(years: Iterable[int]) -> int:
     file_fmt = PFR_GAMES_FILE
 
@@ -252,7 +267,12 @@ def load_game_data(years: Iterable[int]) -> int:
         for game_data in game_data_iter(year, parsed):
             games_data.append(game_data)
         with db.atomic():
-            Game.replace_many(games_data).execute()
+            for game_data in games_data:
+                game_id = (Game
+                           .insert(**game_data)
+                           .on_conflict(conflict_target=GAME_UPSERT_TARG,
+                                        preserve=GAME_UPSERT_COLS)
+                           .execute())
 
     return 0
 

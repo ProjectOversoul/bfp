@@ -7,6 +7,7 @@ from typing import TextIO
 from collections.abc import Iterable, Iterator
 from collections import Counter
 from itertools import groupby
+from operator import attrgetter
 from enum import Enum
 
 from peewee import query_to_string
