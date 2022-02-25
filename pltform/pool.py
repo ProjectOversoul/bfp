@@ -40,8 +40,14 @@ class Score(Counter):
     def __init__(self, wins: int, losses: int, ties: int):
         super().__init__({0: wins, 1: losses, 2: ties})
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return self.total() == 0
+
+    def win_pct(self) -> float:
+        return (self[0] + self[2] / 2.0) / (self.total() or -1) * 100.0
+
+    def record_str(self) -> str:
+        return f"{self[0]}-{self[1]}-{self[2]}"
 
 # some useful type aliases
 Scores        = list[Score]       # [su_score, ats_score]
@@ -134,7 +140,7 @@ class SubPool:
         """Not a pretty way to do this, but oh well...(only works for SU or ATS)
 
         TODO/FIX: this isn't right for ATS (or actually any sub-pool where not all
-        games are mandatory picks)--could change ths to always use win percentage
+        games are mandatory picks)--could change this to always use win percentage
         for determination, though we may still want to represent number of wins in
         reporting (especially when all game picks are required)!!!
 
@@ -146,8 +152,8 @@ class SubPool:
         if not pool.tot_scores:
             raise LogicError("Results yet not computed")
         score_idx = self.sp_type.value
-        by_wins = sorted(pool.tot_scores.items(), key=lambda s: -s[1][score_idx][0])
-        wins, scores = next(groupby(by_wins, key=lambda s: s[1][score_idx][0]))
+        by_win_pct = sorted(pool.tot_scores.items(), key=lambda s: -s[1][score_idx].win_pct())
+        wins, scores = next(groupby(by_win_pct, key=lambda s: s[1][score_idx].win_pct()))
         winner = [s[0] for s in scores] if wins > 0 else [None]
         return winner
 
@@ -219,19 +225,16 @@ class SubPool:
         """
         pool = self.pool
         score_idx = self.sp_type.value
-        # FIX: this should be sorted by `win_pct`, not `tot_wins`!!!
-        by_wins = sorted(pool.tot_scores.items(), key=lambda s: -s[1][score_idx][0])
-        for swami, tot_score in by_wins:
-            # FIX: should print weekly record, and not just number of wins!!!
-            wins = {WeekStr(w): s[score_idx][0] for w, s in self.swami_scores_iter(swami)}
-            tot_wins    = pool.tot_scores[swami][score_idx][0]
-            tot_losses  = pool.tot_scores[swami][score_idx][1]
-            tot_ties    = pool.tot_scores[swami][score_idx][2]
-            tot_picks   = pool.tot_scores[swami][score_idx].total() or -1
-            win_pct     = (tot_wins + tot_ties / 2.0) / tot_picks * 100.0
+        by_win_pct = sorted(pool.tot_scores.items(), key=lambda s: -s[1][score_idx].win_pct())
+        for swami, tot_score in by_win_pct:
+            week_recs   = {WeekStr(w): s[score_idx].record_str()
+                           for w, s in self.swami_scores_iter(swami)}
+            swami_score = pool.tot_scores[swami][score_idx]
+            win_pct     = swami_score.win_pct()
             win_pct_str = f"{win_pct:.0f}%"
-            record      = f"{tot_wins}-{tot_losses}-{tot_ties}"
-            yield {SWAMI_COL: swami.name} | wins | {RECORD_COL: record, WIN_PCT: win_pct_str}
+            total_rec   = swami_score.record_str()
+            yield {SWAMI_COL: swami.name} | week_recs | \
+                  {RECORD_COL: total_rec, WIN_PCT: win_pct_str}
 
     def week_report_hdr(self, week: int) -> list[str]:
         """Header field names for the Week Report, which represent the keys for
@@ -272,31 +275,27 @@ class SubPoolSU(SubPool):
         results = []
         for swami, game_picks in pool.week_picks[week].items():
             picks = {}
-            swami_wins   = 0
-            swami_losses = 0
-            swami_ties   = 0
-            swami_total  = 0
+            swami_score = Score.empty()
             for g, p in game_picks.items():
                 if not p.su_winner:
                     continue
                 win_ind = ''
-                swami_total += 1
                 total_picks[g.matchup] += 1
                 if p.su_winner in winners:
                     win_ind = '*'
-                    swami_wins += 1
+                    swami_score[0] += 1
                     winning_picks[g.matchup] += 1
                 elif g.is_tie:
-                    swami_ties += 1
+                    swami_score[2] += 1
                 else:
-                    swami_losses += 1
+                    swami_score[1] += 1
                 picks[g.matchup] = p.su_winner.code + win_ind
-            record = f"{swami_wins}-{swami_losses}-{swami_ties}"
-            win_pct = (swami_wins + swami_ties / 2.0) / (swami_total or -1) * 100.0
+            total_rec = swami_score.record_str()
+            win_pct = swami_score.win_pct()
             sortkey = win_pct
             win_pct_str = f"{win_pct:.0f}%"
             result = {SWAMI_COL: swami.name} | picks
-            result |= {RECORD_COL: record, WIN_PCT: win_pct_str, SORTKEY: sortkey}
+            result |= {RECORD_COL: total_rec, WIN_PCT: win_pct_str, SORTKEY: sortkey}
             results.append(result)
         for x in sorted(results, key=lambda r: r[SORTKEY], reverse=True):
             yield x
@@ -331,31 +330,27 @@ class SubPoolATS(SubPool):
         results = []
         for swami, game_picks in pool.week_picks[week].items():
             picks = {}
-            swami_wins   = 0
-            swami_losses = 0
-            swami_ties   = 0
-            swami_total  = 0
+            swami_score = Score.empty()
             for g, p in game_picks.items():
                 if not p.ats_winner:
                     continue
                 win_ind = ''
-                swami_total += 1
                 total_picks[g.matchup] += 1
                 if p.ats_winner in winners:
                     win_ind = '*'
-                    swami_wins += 1
+                    swami_score[0] += 1
                     winning_picks[g.matchup] += 1
                 elif g.is_ats_push:
-                    swami_ties += 1
+                    swami_score[2] += 1
                 else:
-                    swami_losses += 1
+                    swami_score[1] += 1
                 picks[g.matchup] = p.ats_winner.code + win_ind
-            record = f"{swami_wins}-{swami_losses}-{swami_ties}"
-            win_pct = (swami_wins + swami_ties / 2.0) / (swami_total or -1) * 100.0
+            total_rec = swami_score.record_str()
+            win_pct = swami_score.win_pct()
             sortkey = win_pct
             win_pct_str = f"{win_pct:.0f}%"
             result = {SWAMI_COL: swami.name} | picks
-            result |= {RECORD_COL: record, WIN_PCT: win_pct_str, SORTKEY: sortkey}
+            result |= {RECORD_COL: total_rec, WIN_PCT: win_pct_str, SORTKEY: sortkey}
             results.append(result)
         for x in sorted(results, key=lambda r: r[SORTKEY], reverse=True):
             yield x
@@ -582,10 +577,10 @@ def main() -> int:
 
     pool = Pool(name, season)
     pool.run(weeks)
-    su = pool.get_sub_pool(SubPoolType.SU)
-    su.print_results_md()
-    #ats = pool.get_sub_pool(SubPoolType.ATS)
-    #ats.print_results_md()
+    #su = pool.get_sub_pool(SubPoolType.SU)
+    #su.print_results_md()
+    ats = pool.get_sub_pool(SubPoolType.ATS)
+    ats.print_results_md()
     pool.print_swami_bios_md()
 
     return 0
