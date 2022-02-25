@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os.path
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from numbers import Number
 
 import regex as re
@@ -98,6 +98,39 @@ class Config:
 ########
 # Misc #
 ########
+
+def rankdata(a: Sequence[Number], method: str = 'average', reverse: bool = True) -> list[Number]:
+    """Standalone implementation of scipy.stats.rankdata, adapted from
+    https://stackoverflow.com/a/3071441, with the following added:
+      - `method` arg, with support for 'average' (default) and 'min'
+      - `reverse` flag, with `True` (default) signifying descending sort order
+        (i.e. the highest value in `a` has a rank of 1, as opposed to `len(a)`)
+    Note that return rankings with be type `float` for method='average' and
+    `int` for method='min'.
+    """
+    def rank_simple(vector):
+        return sorted(range(len(vector)), key=vector.__getitem__, reverse=reverse)
+
+    use_min  = method == 'min'
+    n        = len(a)
+    ivec     = rank_simple(a)
+    svec     = [a[rank] for rank in ivec]
+    sumranks = 0
+    dupcount = 0
+    minrank  = 0
+    newarray = [0] * n
+    for i in range(n):
+        sumranks += i
+        dupcount += 1
+        minrank = minrank or i + 1
+        if i == n - 1 or svec[i] != svec[i + 1]:
+            averank = sumranks / float(dupcount) + 1
+            for j in range(i - dupcount + 1, i + 1):
+                newarray[ivec[j]] = minrank if use_min else averank
+            sumranks = 0
+            dupcount = 0
+            minrank  = 0
+    return newarray
 
 def parse_argv(argv: list[str]) -> tuple[list, dict]:
     """Takes a list of arguments (typically a slice of `sys.argv`), which may be a

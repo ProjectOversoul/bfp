@@ -30,7 +30,7 @@ FTE = data_src.get(FTE_SECT_KEY)
 HTML_PARSER    = FTE.get('html_parser')    or 'lxml'
 HTTP_HEADERS   = FTE.get('http_headers')   or {'User-Agent': 'Mozilla/5.0'}
 FETCH_INTERVAL = FTE.get('fetch_interval') or 1.0
-SWAMI_NAME     = FTE.get('swami_name')     or 'FiveThirtyEight'
+SWAMI_NAME     = FTE.get('swami_name')     or '538'
 
 ################
 # Data Mapping #

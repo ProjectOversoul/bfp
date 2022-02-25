@@ -7,10 +7,11 @@ import json
 
 from peewee import *
 
+from ..utils import rankdata
+from ..core import cfg, ConfigError
 from ..db_core import BaseModel
-from ..core import cfg, ConfigError, ImplementationError
 from ..team import Team
-from ..game import Game, GameInfo, Pick
+from ..game import Game, Pick
 
 SWAMI_CONFIG = environ.get('BFP_SWAMI_CONFIG') or 'swamis.yml'
 cfg.load(SWAMI_CONFIG)
@@ -50,6 +51,8 @@ class Swami(BaseModel):
     module_path  = TextField(null=True)
     swami_class  = TextField(null=True)
     swami_params = TextField(null=True)  # json representation of subclass instance vars
+
+    game_pick: dict[int, Pick]  # indexed by game_id
 
     class Meta:
         table_function = swami_table
@@ -117,11 +120,64 @@ class Swami(BaseModel):
             # note that empty values in `params` should override base values
             setattr(self, key, params[key] if key in params else base_value)
 
+        self.game_pick = {}
+
     def __str__(self) -> str:
         return self.name
 
     def __hash__(self) -> int:
         return hash((self.__class__, self.name))
+
+    def process_week(self, season: int, week: int, pool_params: dict = None) -> None:
+        """Retrieve and process swami's picks for the specified week, before caching
+        them in the instance.  "Processing" means eliminating the lowest confidence
+        picks, within the parameters of the current pool.
+        """
+        # TEMP: hardwired values for now; LATER, these should be passed in as part
+        # of `pool_params`!!!
+        ats_min_picks = 5
+        ats_req_games = set()  # game_id's (derived from `ats_req_picks` in config)
+
+        query = (SwamiPick
+                 .select()
+                 .join(Game, on=(Game.id == SwamiPick.game_id))
+                 .where(SwamiPick.swami_id == self.id,
+                        Game.season == season,
+                        Game.week == week)
+                 .order_by(SwamiPick.pick_ts.desc()))
+
+        # ATTENTION: note that local version of `game_pick` differs in type from
+        # `self.game_pick` (dict of `SwamiPick`s, rather than `Pick`s), since we
+        # need the representation of picks to be mutable here, and immutable when
+        # cached in the instance
+        game_pick: dict[int, SwamiPick] = {}  # indexed by game_id
+        for swami_pick in query.execute():
+            game = swami_pick.game
+            if game.id in game_pick:
+                # REVISIT: `order_by` above ensures that only the latest SwamiPick for
+                # a game is used, but the SU and ATS picks are intercoupled in the pick,
+                # which is not great.  Thus, the picking logic for now needs to ensure
+                # that changes to one subpool does not nullify the data for the other
+                # (see comments in `SwamiPick.clear_ats()` below)!!!
+                continue
+            game_pick[game.id] = swami_pick
+
+        swami_picks = list(game_pick.values())
+        # do a little fudging if `ats_conf is None`--not pretty, but does what we
+        # need it to (i.e. cache the pick so we don't have to requery later)
+        ats_confs = [p.ats_conf or 0 for p in swami_picks]
+        ats_conf_rank = rankdata(ats_confs, method='min')
+        # NOTE: we are sorting this so that we are always adding picks in confidence-
+        # ranked order, just in case we want to adjust the cut-off point on the fly
+        # (e.g. due to mandatory picks, gaps in confidence-levels, etc.)
+        for idx, rank in sorted(enumerate(ats_conf_rank), key=lambda s: s[1]):
+            swami_pick = swami_picks[idx]
+            game = swami_pick.game
+            if rank > ats_min_picks and game.id not in ats_req_games:
+                # NOTE: model object is changed locally, but should NOT be saved!
+                swami_pick.clear_ats()
+            assert game.id not in self.game_pick
+            self.game_pick[game.id] = swami_pick.get_pick()
 
     def get_pick(self, game: Game) -> Pick | None:
         """Return swami's pick for specified game.  For now, this assumes that picks
@@ -131,6 +187,9 @@ class Swami(BaseModel):
         :param game: game data (actually, only interested in `id`)
         :return: predictions and confidence for both SU and ATS
         """
+        if game.id in self.game_pick:
+            return self.game_pick[game.id]
+
         try:
             swami_pick = (SwamiPick
                           .select()
@@ -191,3 +250,13 @@ class SwamiPick(BaseModel):
         # strict superset of `Pick` fields
         pick_data = (getattr(self, f) for f in Pick._fields)
         return Pick._make(pick_data)
+
+    def clear_ats(self) -> None:
+        """Clear out fields representing ATS picks--whether to save the changes is
+        up to the caller.
+
+        LATER: we should represent SU and ATS picks for a game in decoupled records,
+        so it is easier to submit and manage the selections more easily!!!
+        """
+        self.ats_winner = None
+        self.ats_conf   = None

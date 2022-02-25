@@ -24,18 +24,6 @@ if not TEAMS:
 # Team #
 ########
 
-class TeamData(NamedTuple):
-    """For use in data loading (as well as nicer documentation?)--don't really
-    like doing it this way, but the ORM style doesn't allow the model class to
-    be more flexible.
-    """
-    code:      str
-    name:      str
-    full_name: str
-    conf:      str
-    div:       str
-    timezone:  str | None
-
 class Team(BaseModel):
     """Represents a currently active team; note that data for prior incarnations
     of teams (e.g. Decatur Staleys or Oakland Raiders) are incorporated into the
@@ -70,6 +58,8 @@ def load_data() -> int:
     if db.is_closed():
         db.connect()
     with db.atomic():
+        # TODO: support a "reload" mode, where a unique key conflict results in an update
+        # of non-key fields!!!
         Team.insert_many(teams_data).execute()
 
     return 0
