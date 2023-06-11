@@ -3,3 +3,4 @@ pyyaml
 peewee
 requests
 beautifulsoup4
+lxml

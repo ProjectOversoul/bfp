@@ -16,7 +16,8 @@ setup(
                       'pyyaml',
                       'peewee',
                       'requests',
-                      'beautifulsoup4'],
+                      'beautifulsoup4',
+                      'lxml'],
     entry_points={
         'console_scripts': [
             'game     = pltform.game:main',

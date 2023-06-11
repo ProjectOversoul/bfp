@@ -1,2 +1,4 @@
 *.html
 *.sqlite
+log/
+__pycache__/
