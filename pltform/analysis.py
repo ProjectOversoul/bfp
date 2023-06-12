@@ -57,8 +57,20 @@ AbstrAnlyFilter = AnlyFilter | dict[Team, AnlyFilter]
 class AnlyFilterVenue(AnlyFilter):
     """Filter specifying home vs. away games to evaluate
     """
-    def __init__(self):
-        raise ImplementationError("Not yet implemented")
+    HOME: bool = True
+    AWAY: bool = False
+    team_side: bool
+
+    type = FilterType.WHERE
+    
+    def __init__(self, venue: bool):
+        self.team_side = venue
+
+    def apply(self, ctx: GameCtx, my_team: Team, query: ModelSelect) -> ModelSelect:
+        if self.team_side:
+            return query.where(Game.home_team == str(my_team))
+        else:
+            return query.where(Game.away_team == str(my_team))
 
 class AnlyFilterTeam(AnlyFilter):
     """Filter specifying opposing team to evaluate

@@ -18,24 +18,28 @@ default:
       class_params:
         num_games:
         num_seasons:
+        consider_venue: false
         criteria:    [wins, pts, yds]
     SwamiVsTeam:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        consider_venue: false
         criteria:    [wins, pts, yds]
     SwamiVsDiv:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        consider_venue: false
         criteria:    [wins, pts, yds]
     SwamiVsConf:
       swami_type:    cyber
       class_params:
         num_games:
         num_seasons:
+        consider_venue: false
         criteria:    [wins, pts, yds]
 
   swamis:
@@ -114,3 +118,10 @@ default:
       swami_class:   SwamiVsConf
       swami_params:
         num_seasons: 2
+    Rudi 11:
+      about_me:      "Pick based on the last 3 games played at the same location parity as the current matchup"
+      module_path:   pltform.swami
+      swami_class:   SwamiVsAll
+      swami_params:
+        num_games:   3
+        consider_venue: true

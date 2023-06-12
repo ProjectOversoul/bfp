@@ -7,6 +7,8 @@ from collections.abc import Iterable
 import json
 from pprint import pformat
 
+from peewee import IntegrityError
+
 from ..utils import parse_argv
 from ..core import cfg
 from ..db_core import db
@@ -55,7 +57,11 @@ def load_data() -> int:
             if info.get('swami_params'):
                 info['swami_params'] = json.dumps(info['swami_params'])
             print(f"Loading swami '{name}'")
-            Swami.create(**info)
+            try:
+                Swami.create(**info)
+            except IntegrityError as e: #001
+                print("Swami already loaded, skipping...")
+                continue
             nswamis += 1
 
     print(f"{nswamis} swamis loaded")

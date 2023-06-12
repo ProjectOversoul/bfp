@@ -577,8 +577,8 @@ def main() -> int:
 
     pool = Pool(name, season)
     pool.run(weeks)
-    #su = pool.get_sub_pool(SubPoolType.SU)
-    #su.print_results_md()
+    su = pool.get_sub_pool(SubPoolType.SU)
+    su.print_results_md()
     ats = pool.get_sub_pool(SubPoolType.ATS)
     ats.print_results_md()
     pool.print_swami_bios_md()

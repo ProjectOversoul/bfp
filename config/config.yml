@@ -26,7 +26,7 @@ default:
       full_name:        Pro Football Reference
       html_parser:      lxml
       http_headers:     {'User-Agent': 'Mozilla/5.0'}
-      fetch_interval:   1.0
+      fetch_interval:   2.0
       teams_url:        https://www.pro-football-reference.com/teams/<TEAM_CODE>/
       teams_file:       www.pro-football-reference.com_teams_<TEAM_CODE>.html
       games_url:        https://www.pro-football-reference.com/years/<YEAR>/games.htm
@@ -226,7 +226,7 @@ default:
       div:       NFC East
       timezone:  America/New_York
       pfr_code:  was
-      fte_names: [Washington]
+      fte_names: [Washington, Commanders]
     # NFC North
     CHI:
       name:      Bears

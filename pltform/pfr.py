@@ -295,10 +295,14 @@ def fetch_line_data(years: Iterable[int]) -> int:
             if i > 0 or j > 0:
                 sleep(FETCH_INTERVAL)  # be nice to website
             url  = replace_tokens(url_fmt, year=str(year), team_code=team_code)
+            #002
+            #003
             req  = sess.get(url, headers=HTTP_HEADERS)
             if not req.ok:
-                log.info(f"GET '{url}' returned status code {req.status_code}, skipping...")
-                continue
+                log.info(f"GET '{url}' returned status code {req.status_code}, \nadditional log info:: \n{req.text}")
+                if req.headers.get('Retry-After'):
+                    log.info(f"Lockout Time is {req.headers['Retry-After']} seconds...")
+                continue 
             html = req.text
             log.debug(f"Downloaded {len(html)} bytes from '{url}'")
 
